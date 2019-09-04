@@ -9,12 +9,12 @@ steppertest\usbd_cdc_if.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 steppertest\usbd_cdc_if.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 steppertest\usbd_cdc_if.o: ../Drivers/CMSIS/Device/ST/STM32F3xx/Include/stm32f3xx.h
 steppertest\usbd_cdc_if.o: ../Drivers/CMSIS/Device/ST/STM32F3xx/Include/stm32f303xc.h
-steppertest\usbd_cdc_if.o: ../Drivers/CMSIS/Include/core_cm4.h
+steppertest\usbd_cdc_if.o: C:\Users\ASUS\AppData\Local\Arm\Packs\ARM\CMSIS\5.5.1\CMSIS\Core\Include\core_cm4.h
 steppertest\usbd_cdc_if.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
-steppertest\usbd_cdc_if.o: ../Drivers/CMSIS/Include/core_cmInstr.h
-steppertest\usbd_cdc_if.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
-steppertest\usbd_cdc_if.o: ../Drivers/CMSIS/Include/core_cmFunc.h
-steppertest\usbd_cdc_if.o: ../Drivers/CMSIS/Include/core_cmSimd.h
+steppertest\usbd_cdc_if.o: C:\Users\ASUS\AppData\Local\Arm\Packs\ARM\CMSIS\5.5.1\CMSIS\Core\Include\cmsis_version.h
+steppertest\usbd_cdc_if.o: C:\Users\ASUS\AppData\Local\Arm\Packs\ARM\CMSIS\5.5.1\CMSIS\Core\Include\cmsis_compiler.h
+steppertest\usbd_cdc_if.o: C:\Users\ASUS\AppData\Local\Arm\Packs\ARM\CMSIS\5.5.1\CMSIS\Core\Include\cmsis_armcc.h
+steppertest\usbd_cdc_if.o: C:\Users\ASUS\AppData\Local\Arm\Packs\ARM\CMSIS\5.5.1\CMSIS\Core\Include\mpu_armv7.h
 steppertest\usbd_cdc_if.o: ../Drivers/CMSIS/Device/ST/STM32F3xx/Include/system_stm32f3xx.h
 steppertest\usbd_cdc_if.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal.h
 steppertest\usbd_cdc_if.o: ../Inc/stm32f3xx_hal_conf.h

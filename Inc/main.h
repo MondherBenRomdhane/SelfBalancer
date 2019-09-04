@@ -127,16 +127,16 @@
 
 /* USER CODE BEGIN Private defines */
 /* Private function prototypes -----------------------------------------------*/
-void SystemClock_Config(void);
-void MX_GPIO_Init(void);
-void MX_I2C1_Init(void);
-void MX_SPI1_Init(void);
-
-void MX_UART4_Init(void);
-
-void MX_TIM3_Init(void);
-
-void MX_TIM4_Init(void);
+//void SystemClock_Config(void);
+//void MX_GPIO_Init(void);
+//void MX_I2C1_Init(void);
+//void MX_SPI1_Init(void);
+//
+//void MX_UART4_Init(void);
+//
+//void MX_TIM3_Init(void);
+//
+//void MX_TIM4_Init(void);
 
 
 void StartDefaultTask(void const * argument);

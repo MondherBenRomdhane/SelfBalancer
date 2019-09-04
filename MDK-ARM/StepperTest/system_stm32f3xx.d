@@ -1,12 +1,12 @@
 steppertest\system_stm32f3xx.o: ..//Src/system_stm32f3xx.c
 steppertest\system_stm32f3xx.o: ../Drivers/CMSIS/Device/ST/STM32F3xx/Include/stm32f3xx.h
 steppertest\system_stm32f3xx.o: ../Drivers/CMSIS/Device/ST/STM32F3xx/Include/stm32f303xc.h
-steppertest\system_stm32f3xx.o: ../Drivers/CMSIS/Include/core_cm4.h
+steppertest\system_stm32f3xx.o: C:\Users\ASUS\AppData\Local\Arm\Packs\ARM\CMSIS\5.5.1\CMSIS\Core\Include\core_cm4.h
 steppertest\system_stm32f3xx.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
-steppertest\system_stm32f3xx.o: ../Drivers/CMSIS/Include/core_cmInstr.h
-steppertest\system_stm32f3xx.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
-steppertest\system_stm32f3xx.o: ../Drivers/CMSIS/Include/core_cmFunc.h
-steppertest\system_stm32f3xx.o: ../Drivers/CMSIS/Include/core_cmSimd.h
+steppertest\system_stm32f3xx.o: C:\Users\ASUS\AppData\Local\Arm\Packs\ARM\CMSIS\5.5.1\CMSIS\Core\Include\cmsis_version.h
+steppertest\system_stm32f3xx.o: C:\Users\ASUS\AppData\Local\Arm\Packs\ARM\CMSIS\5.5.1\CMSIS\Core\Include\cmsis_compiler.h
+steppertest\system_stm32f3xx.o: C:\Users\ASUS\AppData\Local\Arm\Packs\ARM\CMSIS\5.5.1\CMSIS\Core\Include\cmsis_armcc.h
+steppertest\system_stm32f3xx.o: C:\Users\ASUS\AppData\Local\Arm\Packs\ARM\CMSIS\5.5.1\CMSIS\Core\Include\mpu_armv7.h
 steppertest\system_stm32f3xx.o: ../Drivers/CMSIS/Device/ST/STM32F3xx/Include/system_stm32f3xx.h
 steppertest\system_stm32f3xx.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal.h
 steppertest\system_stm32f3xx.o: ../Inc/stm32f3xx_hal_conf.h
