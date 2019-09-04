@@ -35,5 +35,7 @@ steppertest\stm32f3_discovery_gyroscope.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/s
 steppertest\stm32f3_discovery_gyroscope.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_spi_ex.h
 steppertest\stm32f3_discovery_gyroscope.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim.h
 steppertest\stm32f3_discovery_gyroscope.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim_ex.h
+steppertest\stm32f3_discovery_gyroscope.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart.h
+steppertest\stm32f3_discovery_gyroscope.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart_ex.h
 steppertest\stm32f3_discovery_gyroscope.o: ..\l3gd20\l3gd20.h
 steppertest\stm32f3_discovery_gyroscope.o: ..\Drivers\BSP\gyro.h

@@ -59,19 +59,13 @@
 #include "usbd_cdc_if.h"
 
 
-
-
-
-
-
-
-
 /* USER CODE END Includes */
 
 osThreadId defaultTaskHandle;
 
 osThreadId AngleCalcTaskHandle;
 
+osThreadId MotorCmdTaskHandle ;
 
 int main(void)
 {
@@ -83,7 +77,10 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_SPI1_Init();
-  MX_TIM2_Init();
+    
+  //MX_UART4_Init();
+  
+  MX_TIM4_Init();
   MX_TIM3_Init();
 
   BSP_ACCELERO_Init();
@@ -92,11 +89,15 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 64);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 	
-	 osThreadDef(AngleCalcTask, AngleCalcTask, osPriorityNormal, 0, 256);
+  osThreadDef(AngleCalcTask, AngleCalcTask, osPriorityNormal, 0, 256);
   AngleCalcTaskHandle = osThreadCreate(osThread(AngleCalcTask), NULL);
+  
+  osThreadDef(MotorCmdTask, MotorCmdTask, osPriorityNormal, 0, 64);
+  MotorCmdTaskHandle = osThreadCreate(osThread(MotorCmdTask), NULL);
+  
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */

@@ -33,6 +33,8 @@ steppertest\initmain.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_spi.h
 steppertest\initmain.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_spi_ex.h
 steppertest\initmain.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim.h
 steppertest\initmain.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim_ex.h
+steppertest\initmain.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart.h
+steppertest\initmain.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart_ex.h
 steppertest\initmain.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h
 steppertest\initmain.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
 steppertest\initmain.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h

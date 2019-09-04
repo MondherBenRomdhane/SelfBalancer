@@ -131,14 +131,19 @@ void SystemClock_Config(void);
 void MX_GPIO_Init(void);
 void MX_I2C1_Init(void);
 void MX_SPI1_Init(void);
-static void MX_TIM2_Init(void);
-static void MX_TIM3_Init(void);
+
+void MX_UART4_Init(void);
+
+void MX_TIM3_Init(void);
+
+void MX_TIM4_Init(void);
 
 
 void StartDefaultTask(void const * argument);
 
 void AngleCalcTask(void const * argument);
 
+void MotorCmdTask(void const * argument);
 
 /* USER CODE END Private defines */
 

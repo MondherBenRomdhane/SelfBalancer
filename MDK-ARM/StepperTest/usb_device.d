@@ -34,6 +34,8 @@ steppertest\usb_device.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_spi.
 steppertest\usb_device.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_spi_ex.h
 steppertest\usb_device.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim.h
 steppertest\usb_device.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim_ex.h
+steppertest\usb_device.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart.h
+steppertest\usb_device.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart_ex.h
 steppertest\usb_device.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h
 steppertest\usb_device.o: ../Inc/usbd_conf.h
 steppertest\usb_device.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h

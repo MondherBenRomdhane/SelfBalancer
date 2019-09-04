@@ -28,6 +28,8 @@
 "steppertest\stm32f3xx_hal_pwr_ex.o"
 "steppertest\stm32f3xx_hal_flash.o"
 "steppertest\stm32f3xx_hal_flash_ex.o"
+"steppertest\stm32f3xx_hal_uart.o"
+"steppertest\stm32f3xx_hal_uart_ex.o"
 "steppertest\system_stm32f3xx.o"
 "steppertest\heap_4.o"
 "steppertest\port.o"

@@ -33,3 +33,5 @@ steppertest\stm32f3xx_hal_timebase_tim.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/st
 steppertest\stm32f3xx_hal_timebase_tim.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_spi_ex.h
 steppertest\stm32f3xx_hal_timebase_tim.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim.h
 steppertest\stm32f3xx_hal_timebase_tim.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim_ex.h
+steppertest\stm32f3xx_hal_timebase_tim.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart.h
+steppertest\stm32f3xx_hal_timebase_tim.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart_ex.h

@@ -33,6 +33,8 @@ steppertest\stm32f3xx_it.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_sp
 steppertest\stm32f3xx_it.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_spi_ex.h
 steppertest\stm32f3xx_it.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim.h
 steppertest\stm32f3xx_it.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim_ex.h
+steppertest\stm32f3xx_it.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart.h
+steppertest\stm32f3xx_it.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart_ex.h
 steppertest\stm32f3xx_it.o: ../Inc/stm32f3xx_it.h
 steppertest\stm32f3xx_it.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h
 steppertest\stm32f3xx_it.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
