@@ -69,3 +69,5 @@ steppertest\main.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ior
 steppertest\main.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_core.h
 steppertest\main.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h
 steppertest\main.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ctlreq.h
+steppertest\main.o: ../Inc/LLdrivers.h
+steppertest\main.o: ..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS\cmsis_os.h

@@ -57,6 +57,7 @@
 #include "stm32f3_discovery_accelerometer.h"
 #include "stm32f3_discovery_gyroscope.h"
 #include "usbd_cdc_if.h"
+#include "LLdrivers.h"
 
 
 /* USER CODE END Includes */
@@ -111,7 +112,15 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-
+#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+PUTCHAR_PROTOTYPE
+{
+  /* Place your implementation of fputc here */
+  /* e.g. write a character to the EVAL_COM1 and Loop until the end of transmission */
+  HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF);
+  
+  return ch;
+}
 /* USER CODE END 0 */
 
 /**
@@ -174,9 +183,9 @@ int main(void)
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  osThreadDef(AngleCalcTask, AngleCalcTask, osPriorityNormal, 0, 256);
+  osThreadDef(AngleCalcTask, AngleCalcTask, osPriorityNormal, 0, 128);
   AngleCalcTaskHandle = osThreadCreate(osThread(AngleCalcTask), NULL);
-  
+  //                                  last value 128
   osThreadDef(MotorCmdTask, MotorCmdTask, osPriorityNormal, 0, 128); // no matter wat happens the stack size should remain the same !!!
   MotorCmdTaskHandle = osThreadCreate(osThread(MotorCmdTask), NULL);
   /* USER CODE END RTOS_THREADS */
@@ -379,7 +388,7 @@ static void MX_TIM4_Init(void)
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 24;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 200;
+  htim4.Init.Period = 50000;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
@@ -473,7 +482,7 @@ static void MX_TIM16_Init(void)
   htim16.Instance = TIM16;
   htim16.Init.Prescaler = 24;
   htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim16.Init.Period = 200;
+  htim16.Init.Period = 50000;
   htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim16.Init.RepetitionCounter = 0;
   htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -636,6 +645,12 @@ static void MX_GPIO_Init(void)
                           |LD7_Pin|LD9_Pin|LD10_Pin|LD8_Pin 
                           |LD6_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13|GPIO_PIN_0|GPIO_PIN_1, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOF, GPIO_PIN_10, GPIO_PIN_RESET);
+
   /*Configure GPIO pins : DRDY_Pin MEMS_INT3_Pin MEMS_INT4_Pin MEMS_INT1_Pin 
                            MEMS_INT2_Pin */
   GPIO_InitStruct.Pin = DRDY_Pin|MEMS_INT3_Pin|MEMS_INT4_Pin|MEMS_INT1_Pin 
@@ -654,6 +669,20 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PC13 PC0 PC1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13|GPIO_PIN_0|GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PF10 */
+  GPIO_InitStruct.Pin = GPIO_PIN_10;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -674,20 +703,27 @@ static void MX_GPIO_Init(void)
   * @retval None
   */
 /* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void const * argument)
-{
-  /* init code for USB_DEVICE */
-  MX_USB_DEVICE_Init();
-
-  /* USER CODE BEGIN 5 */
-
-  /* Infinite loop */
-  for(;;)
-  {
-  
-  }
+//void StartDefaultTask(void const * argument)
+//{
+//  /* init code for USB_DEVICE */
+//  MX_USB_DEVICE_Init();
+//
+//  /* USER CODE BEGIN 5 */
+//
+//  /* Infinite loop */
+//  for(;;)
+//  {
+//    // read values form uart buffer
+//    // call uart read fcn
+//    HAL_UART_Receive(&huart1,Buf,sizeof(Buf),500); // 500 is for the blocking mode it the recive fcn is interrupted by the OS (too short taimeout or too long message)the uart fails
+//    //printf("%s",Buf);
+//    // parse the message 
+//    LLDriverCliMenu(Buf,&stCommParam);
+//    //dispatche it to the mailing queue
+//    
+//  }
   /* USER CODE END 5 */ 
-}
+//}
 
 /**
   * @brief  Period elapsed callback in non blocking mode
@@ -722,6 +758,9 @@ void _Error_Handler(char *file, int line)
   /* User can add his own implementation to report the HAL error return state */
   while(1)
   {
+        HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_13);
+        printf("!!!!!!!!!!!error !!!!!!!!!!!!%s , %d",file,line);
+        osDelay(50);
   }
   /* USER CODE END Error_Handler_Debug */
 }

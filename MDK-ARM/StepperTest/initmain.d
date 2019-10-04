@@ -69,5 +69,7 @@ steppertest\initmain.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd
 steppertest\initmain.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_core.h
 steppertest\initmain.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h
 steppertest\initmain.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ctlreq.h
+steppertest\initmain.o: ../Inc/LLdrivers.h
+steppertest\initmain.o: ..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS\cmsis_os.h
 steppertest\initmain.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
 steppertest\initmain.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h

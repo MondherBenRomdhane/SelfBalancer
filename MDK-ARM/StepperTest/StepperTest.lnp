@@ -1,6 +1,7 @@
 --cpu=Cortex-M4.fp
 "steppertest\startup_stm32f303xc.o"
 "steppertest\initmain.o"
+"steppertest\lldrivers.o"
 "steppertest\main.o"
 "steppertest\freertos.o"
 "steppertest\usb_device.o"

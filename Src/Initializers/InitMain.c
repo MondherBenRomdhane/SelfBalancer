@@ -57,10 +57,11 @@
 #include "stm32f3_discovery_accelerometer.h"
 #include "stm32f3_discovery_gyroscope.h"
 #include "usbd_cdc_if.h"
+#include "LLdrivers.h"
 #include <math.h>
 #include <stdbool.h>
 
-static double globAccelangle = 0;
+//static double globAccelangle = 0;
 
 //
 //
@@ -92,13 +93,28 @@ static double globAccelangle = 0;
 ///* USER CODE END PFP */
 //
 ///* USER CODE BEGIN 0 */
-//
 
-    extern TIM_HandleTypeDef htim3;
-    extern TIM_HandleTypeDef htim4;
-    extern TIM_HandleTypeDef htim15;
-    extern TIM_HandleTypeDef htim16;
-    extern TIM_HandleTypeDef htim17;
+extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim4;
+extern TIM_HandleTypeDef htim15;
+extern TIM_HandleTypeDef htim16;
+extern TIM_HandleTypeDef htim17;
+
+extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef huart2;
+
+    typedef struct {
+      double D_Angle;
+    } properties_t;
+
+    osMailQDef (object_pool_q, 2, properties_t);  // Declare mail queue
+    osMailQId  (object_pool_q_id);                 // Mail queue ID
+    
+    osMailQDef (object_pool_qCMD, 2, ST_CommParam);  // Declare mail queue
+    osMailQId  (object_pool_q_idCMD);                 // Mail queue ID
+    
+    osSemaphoreDef (my_semaphore);    // Declare semaphore
+    osSemaphoreId  (my_semaphore_id);
     
     volatile int16_t xval, yval ,zval= 0x00; // accel val
     
@@ -110,274 +126,7 @@ static double globAccelangle = 0;
     volatile float Xval,Yval,Yval1,Zval = 0x00; //gyro val
 
 ///* USER CODE END 0 */
-//
-//
-//void SystemClock_Config(void)
-//{
-//
-//  RCC_OscInitTypeDef RCC_OscInitStruct;
-//  RCC_ClkInitTypeDef RCC_ClkInitStruct;
-//  RCC_PeriphCLKInitTypeDef PeriphClkInit;
-//
-//    /**Initializes the CPU, AHB and APB busses clocks 
-//    */
-//  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE;
-//  RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
-//  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
-//  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-//  RCC_OscInitStruct.HSICalibrationValue = 16;
-//  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-//  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-//  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL6;
-//  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-//  {
-//    _Error_Handler(__FILE__, __LINE__);
-//  }
-//
-//    /**Initializes the CPU, AHB and APB busses clocks 
-//    */
-//  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-//                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-//  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-//  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-//  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-//  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-//
-//  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
-//  {
-//    _Error_Handler(__FILE__, __LINE__);
-//  }
-//
-//  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB|RCC_PERIPHCLK_UART4
-//                              |RCC_PERIPHCLK_I2C1;
-//  PeriphClkInit.Uart4ClockSelection = RCC_UART4CLKSOURCE_PCLK1;
-//  PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
-//  PeriphClkInit.USBClockSelection = RCC_USBCLKSOURCE_PLL;
-//  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-//  {
-//    _Error_Handler(__FILE__, __LINE__);
-//  }
-//
-//    /**Configure the Systick interrupt time 
-//    */
-//  HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
-//
-//    /**Configure the Systick 
-//    */
-//  HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
-//
-//  /* SysTick_IRQn interrupt configuration */
-//  HAL_NVIC_SetPriority(SysTick_IRQn, 15, 0);
-//}
-//
-///* I2C1 init function */
-//void MX_I2C1_Init(void)
-//{
-//
-//  hi2c1.Instance = I2C1;
-//  hi2c1.Init.Timing = 0x2000090E;
-//  hi2c1.Init.OwnAddress1 = 0;
-//  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-//  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-//  hi2c1.Init.OwnAddress2 = 0;
-//  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
-//  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-//  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-//  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-//  {
-//    _Error_Handler(__FILE__, __LINE__);
-//  }
-//
-//    /**Configure Analogue filter 
-//    */
-//  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
-//  {
-//    _Error_Handler(__FILE__, __LINE__);
-//  }
-//
-//    /**Configure Digital filter 
-//    */
-//  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
-//  {
-//    _Error_Handler(__FILE__, __LINE__);
-//  }
-//
-//}
-//
-///* SPI1 init function */
-//void MX_SPI1_Init(void)
-//{
-//
-//  /* SPI1 parameter configuration*/
-//  hspi1.Instance = SPI1;
-//  hspi1.Init.Mode = SPI_MODE_MASTER;
-//  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-//  hspi1.Init.DataSize = SPI_DATASIZE_4BIT;
-//  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-//  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-//  hspi1.Init.NSS = SPI_NSS_SOFT;
-//  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
-//  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-//  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-//  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-//  hspi1.Init.CRCPolynomial = 7;
-//  hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-//  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
-//  if (HAL_SPI_Init(&hspi1) != HAL_OK)
-//  {
-//    _Error_Handler(__FILE__, __LINE__);
-//  }
-//
-//}
-//
-///** Configure pins as 
-//        * Analog 
-//        * Input 
-//        * Output
-//        * EVENT_OUT
-//        * EXTI
-//*/
-//void MX_GPIO_Init(void)
-//{
-//
-//  GPIO_InitTypeDef GPIO_InitStruct;
-//
-//  /* GPIO Ports Clock Enable */
-//  __HAL_RCC_GPIOE_CLK_ENABLE();
-//  __HAL_RCC_GPIOC_CLK_ENABLE();
-//  __HAL_RCC_GPIOF_CLK_ENABLE();
-//  __HAL_RCC_GPIOA_CLK_ENABLE();
-//  __HAL_RCC_GPIOB_CLK_ENABLE();
-//
-//  /*Configure GPIO pin Output Level */
-//  HAL_GPIO_WritePin(GPIOE, CS_I2C_SPI_Pin|LD4_Pin|LD3_Pin|LD5_Pin 
-//                          |LD7_Pin|LD9_Pin|LD10_Pin|LD8_Pin 
-//                          |LD6_Pin, GPIO_PIN_RESET);
-//
-//  /*Configure GPIO pins : DRDY_Pin MEMS_INT3_Pin MEMS_INT4_Pin MEMS_INT1_Pin 
-//                           MEMS_INT2_Pin */
-//  GPIO_InitStruct.Pin = DRDY_Pin|MEMS_INT3_Pin|MEMS_INT4_Pin|MEMS_INT1_Pin 
-//                          |MEMS_INT2_Pin;
-//  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
-//  GPIO_InitStruct.Pull = GPIO_NOPULL;
-//  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-//
-//  /*Configure GPIO pins : CS_I2C_SPI_Pin LD4_Pin LD3_Pin LD5_Pin 
-//                           LD7_Pin LD9_Pin LD10_Pin LD8_Pin 
-//                           LD6_Pin */
-//  GPIO_InitStruct.Pin = CS_I2C_SPI_Pin|LD4_Pin|LD3_Pin|LD5_Pin 
-//                          |LD7_Pin|LD9_Pin|LD10_Pin|LD8_Pin 
-//                          |LD6_Pin;
-//  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-//  GPIO_InitStruct.Pull = GPIO_NOPULL;
-//  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-//  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-//
-//  /*Configure GPIO pin : B1_Pin */
-//  GPIO_InitStruct.Pin = B1_Pin;
-//  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-//  GPIO_InitStruct.Pull = GPIO_NOPULL;
-//  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
-//
-//}
-//
-//
-//void MX_TIM3_Init(void)
-//{
-//
-//  TIM_MasterConfigTypeDef sMasterConfig;
-//  TIM_OC_InitTypeDef sConfigOC;
-//
-//  htim3.Instance = TIM3;
-//  htim3.Init.Prescaler = 24;
-//  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-//  htim3.Init.Period = 200;
-//  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-//  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-//  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
-//  {
-//    _Error_Handler(__FILE__, __LINE__);
-//  }
-//
-//  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-//  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-//  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
-//  {
-//    _Error_Handler(__FILE__, __LINE__);
-//  }
-//
-//  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-//  sConfigOC.Pulse = 0;
-//  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-//  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-//  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
-//  {
-//    _Error_Handler(__FILE__, __LINE__);
-//  }
-//
-//  HAL_TIM_MspPostInit(&htim3);
-//
-//}
-//
-///* TIM4 init function */
-//void MX_TIM4_Init(void)
-//{
-//
-//  TIM_MasterConfigTypeDef sMasterConfig;
-//  TIM_OC_InitTypeDef sConfigOC;
-//
-//  htim4.Instance = TIM4;
-//  htim4.Init.Prescaler = 24;
-//  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-//  htim4.Init.Period = 200;
-//  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-//  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-//  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
-//  {
-//    _Error_Handler(__FILE__, __LINE__);
-//  }
-//
-//  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-//  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-//  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
-//  {
-//    _Error_Handler(__FILE__, __LINE__);
-//  }
-//
-//  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-//  sConfigOC.Pulse = 0;
-//  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-//  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-//  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
-//  {
-//    _Error_Handler(__FILE__, __LINE__);
-//  }
-//
-//  HAL_TIM_MspPostInit(&htim4);
-//
-//}
-//
-///* UART4 init function */
-//void MX_UART4_Init(void)
-//{
-//
-//  huart4.Instance = UART4;
-//  huart4.Init.BaudRate = 9600;
-//  huart4.Init.WordLength = UART_WORDLENGTH_8B;
-//  huart4.Init.StopBits = UART_STOPBITS_1;
-//  huart4.Init.Parity = UART_PARITY_NONE;
-//  huart4.Init.Mode = UART_MODE_TX_RX;
-//  huart4.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-//  huart4.Init.OverSampling = UART_OVERSAMPLING_16;
-//  huart4.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-//  huart4.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-//  if (HAL_UART_Init(&huart4) != HAL_OK)
-//  {
-//    _Error_Handler(__FILE__, __LINE__);
-//  }
-//
-//}
-//
+
 ////add Timer 4 and timer 15 for square PWM command for the drivers of Steppers
 
 ////Timer4  channel4 -> PD15 stepper
@@ -388,37 +137,40 @@ static double globAccelangle = 0;
 //extern TIM_HandleTypeDef htim4;
 void MotorCmdTask(void const * argument)
 {
-    uint8_t UserTxBufferFS[50] = "";
-    HAL_TIM_PWM_Start(&htim4,TIM_CHANNEL_4);
-    HAL_TIM_PWM_Start(&htim15,TIM_CHANNEL_1);
-    HAL_TIM_PWM_Start(&htim16,TIM_CHANNEL_1);
-    HAL_TIM_PWM_Start(&htim17,TIM_CHANNEL_1);
+    //todo not yet tested !!!!
+    init_PWMTimers();
+    
+    //HAL_TIM_PWM_Start(&htim4,TIM_CHANNEL_4);
+    //HAL_TIM_PWM_Start(&htim15,TIM_CHANNEL_1);
+    //HAL_TIM_PWM_Start(&htim16,TIM_CHANNEL_1);
+    //HAL_TIM_PWM_Start(&htim17,TIM_CHANNEL_1);
+    
+    HAL_GPIO_WritePin(GPIOF,GPIO_PIN_10,GPIO_PIN_RESET);  // 
+    HAL_GPIO_WritePin(GPIOF,GPIO_PIN_9,GPIO_PIN_RESET); //TO DO PF9 ship enable is defective !!!!! is a ctually the pin of the tim 15 !!!!!
+    
+    HAL_GPIO_WritePin(GPIOC,GPIO_PIN_0,GPIO_PIN_RESET);  // ship enable is low
+    HAL_GPIO_WritePin(GPIOC,GPIO_PIN_1,GPIO_PIN_RESET);
     
     for(;;)
     {
+        osEvent event = osMailGet(object_pool_q_id , osWaitForever);
+        properties_t *received = (properties_t *)event.value.p;// ".p" indic ates that the message is a pointer
         
-        sprintf((char*)UserTxBufferFS ,"GLOB acel Z angle = %f \r\n",globAccelangle);
-        CDC_Transmit_FS(UserTxBufferFS , strlen((char*)UserTxBufferFS));
-        memset(UserTxBufferFS,'0',sizeof(UserTxBufferFS));
-        
-   HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,GPIO_PIN_RESET); 
-    __HAL_TIM_SET_AUTORELOAD(&htim4,2000);//D15
-    __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,__HAL_TIM_GET_AUTORELOAD(&htim4)/2);
-    osDelay(1);
+        osEvent eventCMD = osMailGet(object_pool_q_idCMD , osWaitForever);
+        ST_CommParam *receivedCMD = (ST_CommParam *)eventCMD.value.p;
+
+        HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_11);
+
+        __HAL_TIM_SET_AUTORELOAD(&htim4,receivedCMD->speed);//D15
+        __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,__HAL_TIM_GET_AUTORELOAD(&htim4)/2);
+        osDelay(1);
+        __HAL_TIM_SET_AUTORELOAD(&htim16,receivedCMD->speed);//b4
+        __HAL_TIM_SET_COMPARE(&htim16,TIM_CHANNEL_1,__HAL_TIM_GET_AUTORELOAD(&htim16)/2);    
       
 
-  __HAL_TIM_SET_AUTORELOAD(&htim15,2000);//b4
-  __HAL_TIM_SET_COMPARE(&htim15,TIM_CHANNEL_1,__HAL_TIM_GET_AUTORELOAD(&htim15)/2);
-      
-  //   __HAL_TIM_SET_AUTORELOAD(&htim16,2000);//F9
-  ////__HAL_TIM_SET_COUNTER(&htim2,__HAL_TIM_GET_AUTORELOAD(&htim2)/2);
-  //__HAL_TIM_SET_COMPARE(&htim16,TIM_CHANNEL_1,__HAL_TIM_GET_AUTORELOAD(&htim16)/2);
-  //
-  //    
-  //         __HAL_TIM_SET_AUTORELOAD(&htim17,2000);//B5
-  ////__HAL_TIM_SET_COUNTER(&htim2,__HAL_TIM_GET_AUTORELOAD(&htim2)/2);
-  //__HAL_TIM_SET_COMPARE(&htim17,TIM_CHANNEL_1,__HAL_TIM_GET_AUTORELOAD(&htim17)/2);
-    osDelay(100);
+        osMailFree(object_pool_q_id, received);
+        osMailFree(object_pool_q_idCMD, receivedCMD);
+        osDelay(100);
     }
 
 }
@@ -428,11 +180,16 @@ void AngleCalcTask(void const * argument)
     BSP_ACCELERO_Init();
     BSP_GYRO_Init();
     
+    object_pool_q_id = osMailCreate(osMailQ(object_pool_q), NULL);
+    properties_t *object_data;
+    object_data = (properties_t *) osMailAlloc(object_pool_q_id, osWaitForever);
+    
+    
     int16_t buffer[3] = {0};
     float Buffer[3];
     
     float angle;
-    uint8_t UserTxBufferFS[100] = "";
+    //uint8_t UserTxBufferFS[100] = "";
     
     //this variable allows that the gyroscope value could be updated from the accelerometer
     bool b_GyroInit = true;
@@ -460,7 +217,7 @@ void AngleCalcTask(void const * argument)
         
         yaw  =atan(zAcc/sqrt(xAcc*xAcc+yAcc*yAcc))*57.32;
         
-        globAccelangle = yaw;
+        //globAccelangle = yaw;
         
         //sprintf((char*)UserTxBufferFS ,"------------- \r\n");
         //CDC_Transmit_FS(UserTxBufferFS , strlen((char*)UserTxBufferFS));
@@ -494,32 +251,80 @@ void AngleCalcTask(void const * argument)
             samplingCounter=0;
             b_GyroInit = true;
         }
+        
+        //printf("accel angle %f gyro angle %f  \r\n",yaw,angle);
+        object_data->D_Angle = angle;
+        osMailPut(object_pool_q_id, object_data);
     }
 }
-//
-//
-///* USER CODE BEGIN Header_StartDefaultTask */
-///**
-//  * @brief  Function implementing the defaultTask thread.
-//  * @param  argument: Not used 
-//  * @retval None
-//  */
-///* USER CODE END Header_StartDefaultTask */
-//void StartDefaultTask(void const * argument)
-//{
-//    /* init code for USB_DEVICE */
-//    MX_USB_DEVICE_Init();
-//
-//    /* USER CODE BEGIN 5 */
-//    /* Infinite loop */
-//    for(;;)
-//    {
-//        
-//    }
-//
-//  /* USER CODE END 5 */ 
-//}
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void const * argument)
+{
+    
+  my_semaphore_id = osSemaphoreCreate(osSemaphore(my_semaphore), 1);  // Create semaphore with 4 tokens
+  /* init code for USB_DEVICE */
+  MX_USB_DEVICE_Init();
+  
+  // create buffer
+  uint8_t Buf[50];
+  
+  ST_CommParam stCommParam ;
+  
+  stCommParam.angleOffset=0;
+  stCommParam.KD =0;
+  stCommParam.KI =0;
+  stCommParam.KP =0;
+  stCommParam.speed =0;
+  
+  /* USER CODE BEGIN 5 */
+    object_pool_q_idCMD = osMailCreate(osMailQ(object_pool_qCMD), NULL);
+    ST_CommParam *object_dataCMD;
+    object_dataCMD = (ST_CommParam *) osMailAlloc(object_pool_q_idCMD, osWaitForever);
+    HAL_UART_Receive_IT(&huart1,Buf,sizeof(Buf));
+    
+  /* Infinite loop */
+  for(;;)
+  {
+      //printf("%u",k);
+      HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_10);
+    // read values form uart buffer
+    // call uart read fcn
+    //HAL_UART_Receive(&huart1,Buf,sizeof(Buf),500); // 500 is for the blocking mode it the recive fcn is interrupted by the OS (too short taimeout or too long message)the uart fails
+     
+    //printf("%s",Buf);
+    // parse the message 
+    //LLDriverCliMenu(Buf,&stCommParam);
+      if (Buf[0]=='?')
+      {printf("IS ?\r\n");}
+      else if(Buf[0]=='D')
+      {printf("IS D\r\n");}
+      //memset(Buf,'\0',strlen((const char *)Buf));
+      Buf[0]=0;
+    //dispatche it to the mailing queue
+    memcpy(object_dataCMD,&stCommParam,sizeof(ST_CommParam));
+    //object_dataCMD->angleOffset=200;
+    osMailPut(object_pool_q_idCMD, object_dataCMD);
+    osDelay(200);
+    
+  }
+  /* USER CODE END 5 */ 
+}
 
+void USART1_IRQHandler(void)
+{
+  /* USER CODE BEGIN USART1_IRQn 0 */
+  // try the semaphore Take
+    osSemaphoreWait(my_semaphore_id, osWaitForever);
+  /* USER CODE END USART1_IRQn 0 */
+  HAL_UART_IRQHandler(&huart1);
+  /* USER CODE BEGIN USART1_IRQn 1 */
+  
+  // try the semaphore give fromISR
+  //:;,
+    osSemaphoreRelease(my_semaphore_id);
+  
+  /* USER CODE END USART1_IRQn 1 */
+}
 
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
