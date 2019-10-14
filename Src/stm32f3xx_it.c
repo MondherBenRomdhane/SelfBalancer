@@ -76,7 +76,8 @@ void HardFault_Handler(void)
   {
     /* USER CODE BEGIN W1_HardFault_IRQn 0 */
      HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_13);
-     HAL_Delay(1000);
+     //HAL_Delay(1000);
+      printf("HardfaultHandler!!!!!!\r\n");
       //should add the  watchdog feature and the ARM registers to this part !!!
     /* USER CODE END W1_HardFault_IRQn 0 */
   }

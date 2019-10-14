@@ -86,6 +86,11 @@
 ///* USER CODE END PV */
 //
 #define GYROSCOPE_DRIFT         40
+
+//when the object is static we notice that the raw values are 
+//around -550 these results in significant Drift! this vlue is o compensate that 
+//after testing this is the value we got to nullify gyroscopic drift
+#define X_AXIS_CALIB            620 
 //
 ///* USER CODE BEGIN PFP */
 ///* Private function prototypes -----------------------------------------------*/
@@ -102,6 +107,10 @@ extern TIM_HandleTypeDef htim17;
 
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
+//extern uint8_t Buf[50];
+uint8_t DataBuf[20];
+uint8_t RXBuf[20] ;
+uint8_t RXCounter = 0;
 
     typedef struct {
       double D_Angle;
@@ -112,6 +121,10 @@ extern UART_HandleTypeDef huart2;
     
     osMailQDef (object_pool_qCMD, 2, ST_CommParam);  // Declare mail queue
     osMailQId  (object_pool_q_idCMD);                 // Mail queue ID
+    
+    osMailQDef (object_pool_qISR, 1, ST_UART1_ISR);  // Declare mail queue
+    osMailQId  (object_pool_q_idISR);                 // Mail queue ID
+    ST_UART1_ISR *object_dataISR;
     
     osSemaphoreDef (my_semaphore);    // Declare semaphore
     osSemaphoreId  (my_semaphore_id);
@@ -150,15 +163,18 @@ void MotorCmdTask(void const * argument)
     
     HAL_GPIO_WritePin(GPIOC,GPIO_PIN_0,GPIO_PIN_RESET);  // ship enable is low
     HAL_GPIO_WritePin(GPIOC,GPIO_PIN_1,GPIO_PIN_RESET);
-    
+    float CMD_Angle=0;
     for(;;)
     {
         osEvent event = osMailGet(object_pool_q_id , osWaitForever);
         properties_t *received = (properties_t *)event.value.p;// ".p" indic ates that the message is a pointer
         
-        osEvent eventCMD = osMailGet(object_pool_q_idCMD , osWaitForever);
+        osEvent eventCMD = osMailGet(object_pool_q_idCMD , 201);
         ST_CommParam *receivedCMD = (ST_CommParam *)eventCMD.value.p;
-
+        
+        CMD_Angle = received->D_Angle-receivedCMD->angleOffset;
+        
+        printf("%06.2f \n\r",CMD_Angle); //leading zeros for the sign serial print the output is on 8
         HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_11);
 
         __HAL_TIM_SET_AUTORELOAD(&htim4,receivedCMD->speed);//D15
@@ -179,7 +195,7 @@ void AngleCalcTask(void const * argument)
 {
     BSP_ACCELERO_Init();
     BSP_GYRO_Init();
-    
+    #define ALPHA (0.9)
     object_pool_q_id = osMailCreate(osMailQ(object_pool_q), NULL);
     properties_t *object_data;
     object_data = (properties_t *) osMailAlloc(object_pool_q_id, osWaitForever);
@@ -189,6 +205,7 @@ void AngleCalcTask(void const * argument)
     float Buffer[3];
     
     float angle;
+    float Angle;
     //uint8_t UserTxBufferFS[100] = "";
     
     //this variable allows that the gyroscope value could be updated from the accelerometer
@@ -206,10 +223,6 @@ void AngleCalcTask(void const * argument)
         yval = buffer[1];
         zval = buffer[2];
         
-        //printf("X = %u , Y = %u , Z = %u \r\n",xval,yval,zval);
-        //sprintf((char*)UserTxBufferFS ,"<-- X = %d , Y = %d , Z = %d --> \r\n",xval,yval,zval);
-        //CDC_Transmit_FS(UserTxBufferFS , strlen((char*)UserTxBufferFS));
-        //memset(UserTxBufferFS,'0',sizeof(UserTxBufferFS));
         
         xAcc=(double)xval/16384;
         yAcc=(double)yval/16384;
@@ -219,10 +232,7 @@ void AngleCalcTask(void const * argument)
         
         //globAccelangle = yaw;
         
-        //sprintf((char*)UserTxBufferFS ,"------------- \r\n");
-        //CDC_Transmit_FS(UserTxBufferFS , strlen((char*)UserTxBufferFS));
-        //memset(UserTxBufferFS,'0',sizeof(UserTxBufferFS));
-        //
+
         //sprintf((char*)UserTxBufferFS ,"acel Z angle = %f \r\n",yaw);
         //CDC_Transmit_FS(UserTxBufferFS , strlen((char*)UserTxBufferFS));
         //memset(UserTxBufferFS,'0',sizeof(UserTxBufferFS));
@@ -235,15 +245,20 @@ void AngleCalcTask(void const * argument)
         
         if (b_GyroInit == true)
         {
-            angle = yaw;
+            //angle = yaw;
             b_GyroInit = false;
+            //Angle = yaw;
         }
 
-        angle =angle - Xval *0.0001;
+        angle =angle + (Xval+X_AXIS_CALIB) *0.0001;
         
         //sprintf((char*)UserTxBufferFS ,"gyro Z angle = %f \r\n",angle);
         //CDC_Transmit_FS(UserTxBufferFS , strlen((char*)UserTxBufferFS));
         //memset(UserTxBufferFS,'0',sizeof(UserTxBufferFS));
+        
+        Angle = ALPHA*((Xval+X_AXIS_CALIB) *0.0001+Angle)+(1-ALPHA)*yaw;
+        //Angle-=1.5;
+        object_data->D_Angle = Angle;
         
         samplingCounter++;
         if (samplingCounter>GYROSCOPE_DRIFT)
@@ -251,8 +266,9 @@ void AngleCalcTask(void const * argument)
             samplingCounter=0;
             b_GyroInit = true;
         }
-        
-        //printf("accel angle %f gyro angle %f  \r\n",yaw,angle);
+        //Complementary filter implementation
+        //printf("accel angle %f gyro angle %f =>%f \r\n",yaw,angle,Angle);
+        //printf("%f\r\n",Angle);
         object_data->D_Angle = angle;
         osMailPut(object_pool_q_id, object_data);
     }
@@ -261,16 +277,15 @@ void AngleCalcTask(void const * argument)
 void StartDefaultTask(void const * argument)
 {
     
-  my_semaphore_id = osSemaphoreCreate(osSemaphore(my_semaphore), 1);  // Create semaphore with 4 tokens
+  //my_semaphore_id = osSemaphoreCreate(osSemaphore(my_semaphore), 1);  // Create semaphore with 4 tokens
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
   
   // create buffer
-  uint8_t Buf[50];
   
   ST_CommParam stCommParam ;
   
-  stCommParam.angleOffset=0;
+  stCommParam.angleOffset=-1.5;
   stCommParam.KD =0;
   stCommParam.KI =0;
   stCommParam.KP =0;
@@ -279,51 +294,90 @@ void StartDefaultTask(void const * argument)
   /* USER CODE BEGIN 5 */
     object_pool_q_idCMD = osMailCreate(osMailQ(object_pool_qCMD), NULL);
     ST_CommParam *object_dataCMD;
-    object_dataCMD = (ST_CommParam *) osMailAlloc(object_pool_q_idCMD, osWaitForever);
-    HAL_UART_Receive_IT(&huart1,Buf,sizeof(Buf));
+    object_dataCMD = (ST_CommParam *) osMailAlloc(object_pool_q_idCMD, 200);
+    if (!object_dataCMD)
+    {
+        Error_Handler();
+    }
+    //object_pool_q_idISR = osMailCreate(osMailQ(object_pool_qISR), NULL);
+    //object_dataISR = (ST_UART1_ISR*) osMailAlloc(object_pool_q_idISR, osWaitForever);
+    //if (!object_dataISR)
+    //{
+    //    Error_Handler();
+    //}
+    
+    //uint8_t Buf[1];
+    //uint8_t* Buf;
+    HAL_UART_Receive_IT(&huart1,RXBuf,sizeof(RXBuf));
     
   /* Infinite loop */
   for(;;)
   {
+      //printf("%s\r\n",Buf);
       //printf("%u",k);
       HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_10);
+        //osEvent eventISR = osMailGet(object_pool_q_idISR, osWaitForever);
+        //ST_UART1_ISR *receivedISR = (ST_UART1_ISR *)eventISR.value.p;// ".p" indic ates that the message is a pointer
     // read values form uart buffer
     // call uart read fcn
-    //HAL_UART_Receive(&huart1,Buf,sizeof(Buf),500); // 500 is for the blocking mode it the recive fcn is interrupted by the OS (too short taimeout or too long message)the uart fails
+    //HAL_UART_Receive(&huart1,Buf,sizeof(Buf),100); // 500 is for the blocking mode it the recive fcn is interrupted by the OS (too short taimeout or too long message)the uart fails
      
     //printf("%s",Buf);
     // parse the message 
-    //LLDriverCliMenu(Buf,&stCommParam);
-      if (Buf[0]=='?')
-      {printf("IS ?\r\n");}
-      else if(Buf[0]=='D')
-      {printf("IS D\r\n");}
-      //memset(Buf,'\0',strlen((const char *)Buf));
-      Buf[0]=0;
+    LLDriverCliMenu(DataBuf,&stCommParam);
+      //if (Buf[0]==ENTER_ASCII)
+      //{printf("CMD\r\n");}
+      //else if(Buf[0]=='?')
+      //{printf("IS ***D\r\nD\r\nD\r\nD\r\nD\r\nD\r\nD\r\nD\r\nD\r\nD\r\nD\r\n***");}
+      
+       
     //dispatche it to the mailing queue
     memcpy(object_dataCMD,&stCommParam,sizeof(ST_CommParam));
     //object_dataCMD->angleOffset=200;
+      
     osMailPut(object_pool_q_idCMD, object_dataCMD);
-    osDelay(200);
+    
+    //osMailFree(object_pool_q_idISR, receivedISR);
+    osDelay(150);
     
   }
   /* USER CODE END 5 */ 
 }
-
+int i=0;
 void USART1_IRQHandler(void)
 {
-  /* USER CODE BEGIN USART1_IRQn 0 */
-  // try the semaphore Take
-    osSemaphoreWait(my_semaphore_id, osWaitForever);
-  /* USER CODE END USART1_IRQn 0 */
-  HAL_UART_IRQHandler(&huart1);
-  /* USER CODE BEGIN USART1_IRQn 1 */
-  
-  // try the semaphore give fromISR
-  //:;,
-    osSemaphoreRelease(my_semaphore_id);
-  
-  /* USER CODE END USART1_IRQn 1 */
+    HAL_UART_IRQHandler(&huart1);
+    //HAL_UART_Receive_IT(&huart1,RXBuf,sizeof(RXBuf));
+    i=strlen((const char *)RXBuf);
+    if (RXBuf[i-1]== 0x0D)
+    {
+        HAL_UART_RxCpltCallback(&huart1);
+        HAL_UART_Receive_IT(&huart1,RXBuf,sizeof(RXBuf));
+    }
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    memcpy(DataBuf,RXBuf,sizeof(DataBuf));
+    //printf("HAL_UART_RxCpltCallback\r\n");
+    HAL_UART_Receive_IT(&huart1,RXBuf,sizeof(RXBuf));
+    //printf("DB%s\r\n",DataBuf);
+    RXCounter=0;
+    memset(RXBuf,'\0',sizeof(RXBuf));
+    huart->RxState = HAL_UART_STATE_READY;
+    
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    //errors could be overflow or overrun
+    __NOP();
+   // printf("HAL_UART_ErrorCallback\r\n");
+   // printf("DB:%s\r\n",DataBuf);
+    //clear the data
+    memset(RXBuf,'\0',sizeof(RXBuf));
+    HAL_UART_Receive_IT(&huart1,RXBuf,sizeof(RXBuf));
+    //RXCounter=0;
 }
 
 
