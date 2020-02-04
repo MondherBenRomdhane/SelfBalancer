@@ -85,12 +85,19 @@
 //
 ///* USER CODE END PV */
 //
+#define ABS(X)     ((X>=0)?X:-X)
 #define GYROSCOPE_DRIFT         40
 
 //when the object is static we notice that the raw values are 
 //around -550 these results in significant Drift! this vlue is o compensate that 
 //after testing this is the value we got to nullify gyroscopic drift
 #define X_AXIS_CALIB            620 
+
+//this is the limit of wich the robot cannot recover from it's tilt better fall and hope for the best XD !!!
+//the motors sould never operate past this limit
+#define DEAD_ANGLE              30
+
+#define BALANCE_RANGE           (0.6)
 //
 ///* USER CODE BEGIN PFP */
 ///* Private function prototypes -----------------------------------------------*/
@@ -122,7 +129,7 @@ uint8_t RXCounter = 0;
     osMailQDef (object_pool_qCMD, 2, ST_CommParam);  // Declare mail queue
     osMailQId  (object_pool_q_idCMD);                 // Mail queue ID
     
-    osMailQDef (object_pool_qISR, 1, ST_UART1_ISR);  // Declare mail queue
+    osMailQDef (object_pool_qISR, 1, ST_UART1_ISR);  // Declare mail queue 
     osMailQId  (object_pool_q_idISR);                 // Mail queue ID
     ST_UART1_ISR *object_dataISR;
     
@@ -135,7 +142,8 @@ uint8_t RXCounter = 0;
     
     float yaw = 0;
     
-    
+    extern bool b_DebugEnabled ;
+    extern bool b_Reeinitialise;
     volatile float Xval,Yval,Yval1,Zval = 0x00; //gyro val
 
 ///* USER CODE END 0 */
@@ -150,19 +158,13 @@ uint8_t RXCounter = 0;
 //extern TIM_HandleTypeDef htim4;
 void MotorCmdTask(void const * argument)
 {
-    //todo not yet tested !!!!
     init_PWMTimers();
     
-    //HAL_TIM_PWM_Start(&htim4,TIM_CHANNEL_4);
-    //HAL_TIM_PWM_Start(&htim15,TIM_CHANNEL_1);
-    //HAL_TIM_PWM_Start(&htim16,TIM_CHANNEL_1);
-    //HAL_TIM_PWM_Start(&htim17,TIM_CHANNEL_1);
-    
-    HAL_GPIO_WritePin(GPIOF,GPIO_PIN_10,GPIO_PIN_RESET);  // 
-    HAL_GPIO_WritePin(GPIOF,GPIO_PIN_9,GPIO_PIN_RESET); //TO DO PF9 ship enable is defective !!!!! is a ctually the pin of the tim 15 !!!!!
-    
-    HAL_GPIO_WritePin(GPIOC,GPIO_PIN_0,GPIO_PIN_RESET);  // ship enable is low
-    HAL_GPIO_WritePin(GPIOC,GPIO_PIN_1,GPIO_PIN_RESET);
+    //HAL_GPIO_WritePin(GPIOF,GPIO_PIN_10,GPIO_PIN_RESET);  // 
+    //HAL_GPIO_WritePin(GPIOF,GPIO_PIN_9,GPIO_PIN_RESET); //TO DO PF9 ship enable is defective !!!!! is a ctually the pin of the tim 15 !!!!!
+    //
+    //HAL_GPIO_WritePin(GPIOC,GPIO_PIN_0,GPIO_PIN_RESET);  // ship enable is low
+    //HAL_GPIO_WritePin(GPIOC,GPIO_PIN_1,GPIO_PIN_RESET);
     float CMD_Angle=0;
     for(;;)
     {
@@ -172,23 +174,58 @@ void MotorCmdTask(void const * argument)
         osEvent eventCMD = osMailGet(object_pool_q_idCMD , 201);
         ST_CommParam *receivedCMD = (ST_CommParam *)eventCMD.value.p;
         
-        CMD_Angle = received->D_Angle-receivedCMD->angleOffset;
+        //offset for the angle
+        CMD_Angle = received->D_Angle - receivedCMD->angleOffset;
         
-        printf("%06.2f \n\r",CMD_Angle); //leading zeros for the sign serial print the output is on 8
-        HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_11);
-
-        __HAL_TIM_SET_AUTORELOAD(&htim4,receivedCMD->speed);//D15
-        __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,__HAL_TIM_GET_AUTORELOAD(&htim4)/2);
-        osDelay(1);
-        __HAL_TIM_SET_AUTORELOAD(&htim16,receivedCMD->speed);//b4
-        __HAL_TIM_SET_COMPARE(&htim16,TIM_CHANNEL_1,__HAL_TIM_GET_AUTORELOAD(&htim16)/2);    
-      
-
-        osMailFree(object_pool_q_id, received);
-        osMailFree(object_pool_q_idCMD, receivedCMD);
-        osDelay(100);
+        if (b_Reeinitialise == false)
+        {
+            if (CMD_Angle>0)
+            {
+                setLeftStepperDir(Forward);
+                setRightStepperDir(Forward);
+            }
+            else
+            {
+                setLeftStepperDir(Backwards);
+                setRightStepperDir(Backwards);
+            }
+            
+            HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_11);
+            
+            HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_RESET);
+            calculatePID(receivedCMD,CMD_Angle);
+            
+            osMailFree(object_pool_q_id, received);
+            osMailFree(object_pool_q_idCMD, receivedCMD);
+            osDelay(100);
+        }
+        
+        if (ABS(CMD_Angle) > DEAD_ANGLE )
+        {
+            b_Reeinitialise = true;
+            receivedCMD->speed=0; //overriding the pid value
+        }
+        
+        if (ABS(CMD_Angle) < BALANCE_RANGE )
+        {
+            b_Reeinitialise = false;
+            receivedCMD->speed=0; //overriding the pid value
+        }
+        else
+        {
+            HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_RESET);
+        }
+        
+        if (b_DebugEnabled==true)
+        {
+            //do not remove this line it is for debug purposes !!
+            printf("%06.2f \n\r",CMD_Angle); //leading zeros for the sign serial print the output is on 8
+        }
+        
+            //receivedCMD->speed*=0.01;
+            setMotorCmd(receivedCMD);
+        
     }
-
 }
 
 void AngleCalcTask(void const * argument)
@@ -210,13 +247,14 @@ void AngleCalcTask(void const * argument)
     
     //this variable allows that the gyroscope value could be updated from the accelerometer
     bool b_GyroInit = true;
+    bool b_GyroCalib = true;
     //this variable prevents the gyroscopic drift
     uint8_t samplingCounter = 0;
     
     for(;;)
     {
         
-        HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_8);
+        HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_15);
         osDelay(100);
         BSP_ACCELERO_GetXYZ(buffer);
         xval = buffer[0];
@@ -230,7 +268,7 @@ void AngleCalcTask(void const * argument)
         
         yaw  =atan(zAcc/sqrt(xAcc*xAcc+yAcc*yAcc))*57.32;
         
-        //globAccelangle = yaw;
+        //globAccelangle = yaw;   
         
 
         //sprintf((char*)UserTxBufferFS ,"acel Z angle = %f \r\n",yaw);
@@ -247,17 +285,22 @@ void AngleCalcTask(void const * argument)
         {
             //angle = yaw;
             b_GyroInit = false;
-            //Angle = yaw;
+            if (b_GyroCalib == true)
+            {
+                Angle = yaw;
+                b_GyroCalib = false;
+            }
         }
 
-        angle =angle + (Xval+X_AXIS_CALIB) *0.0001;
+        //angle =angle + (Xval+X_AXIS_CALIB) *0.0001;
         
         //sprintf((char*)UserTxBufferFS ,"gyro Z angle = %f \r\n",angle);
         //CDC_Transmit_FS(UserTxBufferFS , strlen((char*)UserTxBufferFS));
         //memset(UserTxBufferFS,'0',sizeof(UserTxBufferFS));
         
         Angle = ALPHA*((Xval+X_AXIS_CALIB) *0.0001+Angle)+(1-ALPHA)*yaw;
-        //Angle-=1.5;
+        
+        
         object_data->D_Angle = Angle;
         
         samplingCounter++;
@@ -269,7 +312,7 @@ void AngleCalcTask(void const * argument)
         //Complementary filter implementation
         //printf("accel angle %f gyro angle %f =>%f \r\n",yaw,angle,Angle);
         //printf("%f\r\n",Angle);
-        object_data->D_Angle = angle;
+        //object_data->D_Angle = angle;
         osMailPut(object_pool_q_id, object_data);
     }
 }
@@ -280,16 +323,21 @@ void StartDefaultTask(void const * argument)
   //my_semaphore_id = osSemaphoreCreate(osSemaphore(my_semaphore), 1);  // Create semaphore with 4 tokens
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
+  enableLeftMDriver(Enable);
+  enableRightMDriver(Enable);
   
+  setStepperMotorMode(Quarter_S);
   // create buffer
   
   ST_CommParam stCommParam ;
   
-  stCommParam.angleOffset=-1.5;
+  stCommParam.angleOffset=-4.2; //this is a mechanical constraint XD !
   stCommParam.KD =0;
   stCommParam.KI =0;
-  stCommParam.KP =0;
+  stCommParam.KP =11 ;
   stCommParam.speed =0;
+  b_DebugEnabled = false;
+  b_Reeinitialise = true;
   
   /* USER CODE BEGIN 5 */
     object_pool_q_idCMD = osMailCreate(osMailQ(object_pool_qCMD), NULL);
@@ -318,11 +366,6 @@ void StartDefaultTask(void const * argument)
       HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_10);
         //osEvent eventISR = osMailGet(object_pool_q_idISR, osWaitForever);
         //ST_UART1_ISR *receivedISR = (ST_UART1_ISR *)eventISR.value.p;// ".p" indic ates that the message is a pointer
-    // read values form uart buffer
-    // call uart read fcn
-    //HAL_UART_Receive(&huart1,Buf,sizeof(Buf),100); // 500 is for the blocking mode it the recive fcn is interrupted by the OS (too short taimeout or too long message)the uart fails
-     
-    //printf("%s",Buf);
     // parse the message 
     LLDriverCliMenu(DataBuf,&stCommParam);
       //if (Buf[0]==ENTER_ASCII)

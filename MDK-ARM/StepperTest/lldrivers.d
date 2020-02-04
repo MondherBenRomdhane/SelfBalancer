@@ -51,5 +51,7 @@ steppertest\lldrivers.o: ..\Middlewares\Third_Party\FreeRTOS\Source\include\time
 steppertest\lldrivers.o: ..\Middlewares\Third_Party\FreeRTOS\Source\include\queue.h
 steppertest\lldrivers.o: ..\Middlewares\Third_Party\FreeRTOS\Source\include\semphr.h
 steppertest\lldrivers.o: ..\Middlewares\Third_Party\FreeRTOS\Source\include\event_groups.h
+steppertest\lldrivers.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 steppertest\lldrivers.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 steppertest\lldrivers.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+steppertest\lldrivers.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
