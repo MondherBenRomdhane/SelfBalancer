@@ -83,7 +83,9 @@ osThreadId defaultTaskHandle;
 /* Private variables ---------------------------------------------------------*/
 osThreadId AngleCalcTaskHandle;
 
-osThreadId MotorCmdTaskHandle ;
+osThreadId printSerialHandle;
+
+//osThreadId MotorCmdTaskHandle ;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -121,6 +123,7 @@ PUTCHAR_PROTOTYPE
   //HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF);
   HAL_UART_Transmit_IT(&huart1, (uint8_t *)&ch, 1);
   osDelay(10);
+  //HAL_Delay(10);
   return ch;
 }
 /* USER CODE END 0 */
@@ -182,15 +185,19 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask 128 */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityBelowNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
-  /* USER CODE BEGIN RTOS_THREADS 128*/
-  osThreadDef(AngleCalcTask, AngleCalcTask, osPriorityNormal, 0, 128);
+  /* USER CODE BEGIN RTOS_THREADS 300*/
+  osThreadDef(AngleCalcTask, AngleCalcTask, osPriorityNormal, 0, 250);
   AngleCalcTaskHandle = osThreadCreate(osThread(AngleCalcTask), NULL);
+  
+  /* USER CODE BEGIN RTOS_THREADS 100*/
+  osThreadDef(printSerial, printSerial, osPriorityAboveNormal, 0, 150);
+  printSerialHandle = osThreadCreate(osThread(printSerial), NULL);
   //                                  last value 128
-  osThreadDef(MotorCmdTask, MotorCmdTask, osPriorityBelowNormal, 0, 160); // no matter wat happens the stack size should remain the same !!!
-  MotorCmdTaskHandle = osThreadCreate(osThread(MotorCmdTask), NULL);
+  //osThreadDef(MotorCmdTask, MotorCmdTask, osPriorityNormal, 0, 160); // no matter wat happens the stack size should remain the same !!!
+  //MotorCmdTaskHandle = osThreadCreate(osThread(MotorCmdTask), NULL);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
@@ -630,7 +637,7 @@ static void MX_USART2_UART_Init(void)
         * EVENT_OUT
         * EXTI
 */
-static void MX_GPIO_Init(void)
+ static void MX_GPIO_Init(void)
 {
 
   GPIO_InitTypeDef GPIO_InitStruct;
@@ -706,6 +713,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  
+  GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_13|GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 }
 
 /* USER CODE BEGIN 4 */

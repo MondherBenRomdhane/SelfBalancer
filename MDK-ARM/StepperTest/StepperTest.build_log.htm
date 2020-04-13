@@ -21,28 +21,35 @@ Target DLL:      STLink\ST-LINKIII-KEIL_SWO.dll V3.0.6.0
 Dialog DLL:      TCM.DLL V1.36.1.0
  
 <h2>Project:</h2>
-C:\Users\ASUS\Desktop\Dev_TOOLS\WorksPaceBalancer\GeneratedCode\MDK-ARM\StepperTest.uvprojx
+C:\Users\ASUS\Desktop\Dev_TOOLS\WorksPaceBalancer\GeneratedCodeONETASKATTEMPT\MDK-ARM\StepperTest.uvprojx
 Project File Date:  10/02/2019
 
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 6 (build 750)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'StepperTest'
-compiling LLdrivers.c...
-..\Src\LLdrivers.c(200): warning:  #177-D: variable "previousError"  was declared but never referenced
-          static float previousError = 0; //(used by derivative control)
-..\Src\LLdrivers.c: 1 warning, 0 errors
 compiling InitMain.c...
-..\Src\Initializers\InitMain.c(209): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-          if (ABS(CMD_Angle) < BALANCE_RANGE )
-..\Src\Initializers\InitMain.c(301): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-          Angle = ALPHA*((Xval+X_AXIS_CALIB) *0.0001+Angle)+(1-ALPHA)*yaw;
-..\Src\Initializers\InitMain.c(244): warning:  #177-D: variable "angle"  was declared but never referenced
-      float angle;
-..\Src\Initializers\InitMain.c: 3 warnings, 0 errors
+..\Src\Initializers\InitMain.c(302): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+          Angle = ALPHA*((Xval/*+X_AXIS_CALIB*/) * 0.00001 + Angle)+(1-ALPHA)*yaw;
+..\Src\Initializers\InitMain.c(231): warning:  #177-D: variable "buffer"  was declared but never referenced
+      int16_t buffer[3] = {0};
+..\Src\Initializers\InitMain.c(235): warning:  #177-D: variable "b_GyroInit"  was declared but never referenced
+      bool b_GyroInit = true;
+..\Src\Initializers\InitMain.c(238): warning:  #177-D: variable "samplingCounter"  was declared but never referenced
+      uint8_t samplingCounter = 0;
+..\Src\Initializers\InitMain.c: 4 warnings, 0 errors
+compiling LLdrivers.c...
+..\Src\LLdrivers.c(353): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+          if (arg_CMD_Angle < BALANCE_RANGE )
+..\Src\LLdrivers.c(460): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+      while ((ABS(CalibYaw)-ABS(calibAngle)>0.5)||(idx<20))
+..\Src\LLdrivers.c(468): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+          calibAngle = ALPHA_CALIB*((Buffer[0]) * 0.0001 + calibAngle)+(1-ALPHA_CALIB)*CalibYaw;
+..\Src\LLdrivers.c: 3 warnings, 0 errors
+compiling main.c...
 linking...
-Program Size: Code=36600 RO-data=968 RW-data=720 ZI-data=9880  
+Program Size: Code=35564 RO-data=936 RW-data=684 ZI-data=9900  
 FromELF: creating hex file...
-"StepperTest\StepperTest.axf" - 0 Error(s), 4 Warning(s).
+"StepperTest\StepperTest.axf" - 0 Error(s), 7 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -82,7 +89,7 @@ Package Vendor: Keil
 
    * Component: Keil.ARM Compiler::Compiler:I/O:STDOUT:ITM:1.2.0
       Source file:   Source\retarget_io.c
-Build Time Elapsed:  00:00:06
+Build Time Elapsed:  00:00:07
 </pre>
 </body>
 </html>

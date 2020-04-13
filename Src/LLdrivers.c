@@ -8,6 +8,9 @@
 
 #include <stdbool.h>
 
+#include "stm32f3_discovery_accelerometer.h"
+#include "stm32f3_discovery_gyroscope.h"
+
 
 #define ABS(X)     ((X>=0)?X:-X)
 //#define MOTOR(N)   (54 * N + 60000)
@@ -16,6 +19,7 @@
 bool b_DebugEnabled ;
 bool b_Reeinitialise ;
 
+extern char enableMotors;
 //timers declared
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim4;
@@ -38,41 +42,31 @@ void init_PWMTimers()
     HAL_TIM_PWM_Start(&htim17,TIM_CHANNEL_1);
 }
 
-
 //this function manages the abstract motor cmd
 //ship enable
 //rototion sense
 //speed throuough PWM square timer
-double gotValue =1;
+
 void setMotorCmd(ST_CommParam *receivedCMD)
 {
-    static int i=0;
-    i++;
+    //in the case of implementing a transfert funcion it should not be here !!!!
     //uint16_t = TF(receivedCMD->speed);
+    
+    if(enableMotors==false) //overrite whaterver value the speed is by 0
+    {
+        receivedCMD->speed = 0;
+    }
+    
     if(receivedCMD)
     {
-        //gotValue = TF(receivedCMD->speed);
-        //gotValue*=receivedCMD->speed;
-        //// ship enable
-        //if (i==20)
-        //{
-        //    //printf("ARR%f , speed %d\r\n",gotValue,receivedCMD->speed);
-        //    i=0;
-        //}
-        
-        //rotation sense
-        //__NOP();
-        //speed rotation // as tested the tolerable speed ranges go from [0 to 1000]
-        
-        __HAL_TIM_SET_AUTORELOAD(&htim4, /*ABS(round(gotValue))*/ARR(receivedCMD->speed));//D15
+        __HAL_TIM_SET_AUTORELOAD(&htim4, ARR(receivedCMD->speed));//D15
         __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,__HAL_TIM_GET_AUTORELOAD(&htim4)/2);
         TIM4->EGR|=TIM_EGR_UG;
-        //osDelay(1);
-        __HAL_TIM_SET_AUTORELOAD(&htim16,/*ABS(round(gotValue))*/ARR(receivedCMD->speed));//b4
+        
+        __HAL_TIM_SET_AUTORELOAD(&htim16,ARR(receivedCMD->speed));//b4
         __HAL_TIM_SET_COMPARE(&htim16,TIM_CHANNEL_1,__HAL_TIM_GET_AUTORELOAD(&htim16)/2);
         TIM16->EGR|=TIM_EGR_UG;
     }
-
 }
 
 // to do add the return typedef struct
@@ -93,7 +87,7 @@ void LLDriverCliMenu(uint8_t* Buf,ST_CommParam *stCommParam)
         {
             //printf("\n\rO : Offset\n\rP : KP\n\rI : KI\n\rD : KD\n\rS : Speed\n\r");
             
-            printf("\n\rO : Offset %f\n\rD : KD %d \n\rI : KI %d\n\rP : KP %d\n\rS : Speed %d\n\r",
+            printf("\n\rO : Offset %f\n\rD : KD %f \n\rI : KI %f\n\rP : KP %f\n\rS : Speed %d\n\r",
               stCommParam->angleOffset,
               stCommParam->KD,
               stCommParam->KI,
@@ -141,28 +135,28 @@ void LLDriverCliMenu(uint8_t* Buf,ST_CommParam *stCommParam)
                 
                 if (Value[0]=='P')
                 {
-                    stCommParam->KP = atoi((const char *)Value+1);
-                    printf("KP set OK %d\r\n",stCommParam->KP);
+                    stCommParam->KP = atof((const char *)Value+1);
+                    printf("KP set OK %f\r\n",stCommParam->KP);
                     osDelay(10);
                 }
                 
                 else if (Value[0]=='I')
                 {
-                    stCommParam->KI = atoi((const char *)Value+1);
-                    printf("KI set OK %d\r\n",stCommParam->KI);
+                    stCommParam->KI = atof((const char *)Value+1);
+                    printf("KI set OK %f\r\n",stCommParam->KI);
                     osDelay(10);
                 }
                 
                 else if (Value[0]=='D')
                 {
-                    stCommParam->KD = atoi((const char *)Value+1);
-                    printf("KD set OK %d\r\n",stCommParam->KD);
+                    stCommParam->KD = atof((const char *)Value+1);
+                    printf("KD set OK %f\r\n",stCommParam->KD);
                     osDelay(10);
                 }
                 
                 else if (Value[0]=='O')
                 {
-                    stCommParam->angleOffset = atoi((const char *)Value+1);
+                    stCommParam->angleOffset = atof((const char *)Value+1);
                     printf("angleOffset set OK %f\r\n",stCommParam->angleOffset);
                     osDelay(10);
                 }
@@ -170,10 +164,30 @@ void LLDriverCliMenu(uint8_t* Buf,ST_CommParam *stCommParam)
                 else if (Value[0]=='S')
                 {
                     stCommParam->speed = atoi((const char *)Value+1);
-                    printf("speed set OK %d\r\n",stCommParam->speed);
+                    //printf("speed set OK %d\r\n",stCommParam->speed);
                     osDelay(10);
                 }
                 
+                else if (Value[0]=='M')
+                {
+                    char tempvar;
+                    tempvar = atoi((const char *)Value+1);
+                    if (tempvar == 1)
+                    {
+                        enableMotors = true;
+                    }
+                    else if(tempvar == 0)
+                    {
+                        enableMotors = false;
+                    }
+                    else
+                    {
+                        printf("KO! \r\n");
+                        osDelay(10);
+                    }
+                    //printf("speed set OK %d\r\n",stCommParam->speed);
+                    osDelay(10);
+                }
                 else
                 {
                     printf("KO! \r\n");
@@ -195,25 +209,24 @@ void LLDriverCliMenu(uint8_t* Buf,ST_CommParam *stCommParam)
 
 void calculatePID(ST_CommParam *receivedCMD ,float sensorValue) 
 {
+    //#define PID_SCALER 0.01
+    #define PID_SCALER 1
+    
     if (receivedCMD)
     {
         static float previousError = 0; //(used by derivative control)
         const char setPoint = 0; //radians, set by the user
-        //float sensorValue = 0; //radians, from the IMU
-        //float speed; //output of calculatePID()
-        
-        
         static float proportional, derivative, integral;
         static float error =0;
+        
         error = ABS(sensorValue )- setPoint;
         
         proportional = error;
-        //integral += error * 0.0001f; 
-        //derivative = (error - previousError)/0.0001f;
-        //previousError = error;
-        receivedCMD->speed = (proportional*receivedCMD->KP) + (integral*receivedCMD->KI) + (derivative*receivedCMD->KD);
+        integral += error * 0.00001f; 
+        derivative = (error - previousError);///0.0001f;
+        previousError = error;
+        receivedCMD->speed = (proportional*receivedCMD->KP) + (integral*receivedCMD->KI*(PID_SCALER)) + (derivative*receivedCMD->KD*(PID_SCALER));
     }
-    
 }
 
 void enableLeftMDriver(E_State b_State)
@@ -306,6 +319,66 @@ void setRightStepperMode(E_StepperMode E_Mode)
     }
 }
 
+void initialiseParam(ST_CommParam *stArgCommParam)
+{
+    if (stArgCommParam)
+    {
+        stArgCommParam->angleOffset=ANGLE_OFFSET; //this is a mechanical constraint XD !
+        stArgCommParam->KD =0;
+        stArgCommParam->KI =0;
+        stArgCommParam->KP =20 ;
+        stArgCommParam->speed =0;
+        b_DebugEnabled = true;
+        b_Reeinitialise = true;
+        enableMotors = true;
+    }
+    else
+    {
+        Error_Handler();
+    }
+}
+
+void stateManage(float arg_CMD_Angle, ST_CommParam *stArgCommParam)
+{
+    if (stArgCommParam)
+    {
+        //outside the balance range
+        if (arg_CMD_Angle > DEAD_ANGLE ) 
+        {
+            b_Reeinitialise = true; // to wait until put back at the balancing point
+            stArgCommParam->speed=0; //overriding the pid value
+        }
+        
+        // at equilibrium point
+        if (arg_CMD_Angle < BALANCE_RANGE )
+        {
+            b_Reeinitialise = false; // start the balancing process only when put at equilibrium point
+            stArgCommParam->speed=0; //overriding the pid value
+            HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_SET);
+        }
+        else
+        {
+            //what the ??? (is the led working to indicate that the rob is at equilibrium pt.)
+            HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_RESET);
+        }
+    }
+    else
+    {
+        Error_Handler();
+    }
+    
+}
+
+void debugPrint(float arg_CMD_Angle, int speed)
+{
+    if (b_DebugEnabled==true)
+        {
+            //do not remove this line it is for debug purposes !!
+            //printf("%06.2f;%06.2f;\n\r",arg_CMD_Angle,speed); //leading zeros for the sign serial print the output is on 8
+            printf("%06.2f;%d;\n\r",arg_CMD_Angle,speed); //leading zeros for the sign serial print the output is on 8
+        }
+}
+
 void setStepperMotorMode(E_StepperMode E_Mode)
 {
     setLeftStepperMode(E_Mode);
@@ -336,15 +409,110 @@ void setRightStepperDir(E_Direction E_Dir)
     }
 }
 
-//void SDebug(char* string)
-//{
-//    if(string)
-//    {
-//        static uint8_t counter = 0;
-//        
-//        if 
-//    }
-//
-//}
+
+void setStepperAngleDir(float argCMD_Angle)
+{
+    if (argCMD_Angle>0)
+    {
+        setLeftStepperDir(Forward);
+        setRightStepperDir(Forward);
+    }
+    else
+    {
+        setLeftStepperDir(Backwards);
+        setRightStepperDir(Backwards);
+    }
+}
+
+void GanttDebug(char idx)
+{
+    //B11/13/15
+    HAL_GPIO_WritePin(GPIOB,GPIO_PIN_11,GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOB,GPIO_PIN_13,GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOB,GPIO_PIN_15,GPIO_PIN_RESET);
+    
+    if (idx == 1)
+    {
+        HAL_GPIO_WritePin(GPIOB,GPIO_PIN_11,GPIO_PIN_SET);
+    }
+    else if (idx == 2)
+    {
+        HAL_GPIO_WritePin(GPIOB,GPIO_PIN_13,GPIO_PIN_SET);
+    }
+    else if (idx == 3)
+    {
+        HAL_GPIO_WritePin(GPIOB,GPIO_PIN_15,GPIO_PIN_SET);
+    }
+}
+
+    //float Buffer[1];
+    //float CalibYaw = 90;
+    //float calibAngle = 0;
+
+float calibrateIMU(void)
+{
+    float Buffer[1];
+    float CalibYaw = 90;
+    float calibAngle = 0;
+    char idx = 0;
+
+    //for(char i = 0 ; i<CALIBRATION_CYCLE ; i++)
+    while ((ABS(CalibYaw)-ABS(calibAngle)>0.5)||(idx<20))
+    {
+        idx++;
+        CalibYaw = getAccelAngle();
+        
+        BSP_GYRO_GetXYZ(Buffer);
+        
+        //calibAngle = (Buffer[0]) * 0.0001 + calibAngle; //pure gyro value 
+        calibAngle = ALPHA_CALIB*((Buffer[0]) * 0.0001 + calibAngle)+(1-ALPHA_CALIB)*CalibYaw;
+        
+        toggleAllLeds(100);
+        AllLedSetState(GPIO_PIN_RESET);
+
+    }
+    //calculating gyroscopic drift
+    //return(calibAngle/CALIBRATION_CYCLE);
+    return(calibAngle);
+}
+
+float getAccelAngle(void)
+{
+    int16_t buffer[3] = {0};
+    double xAcc , yAcc, zAcc = 0;
+    
+    BSP_ACCELERO_GetXYZ(buffer);
+    
+    xAcc=(double)buffer[0]/16384;
+    yAcc=(double)buffer[1]/16384;
+    zAcc=(double)buffer[2]/16384;
+
+    return (atan(zAcc/sqrt(xAcc*xAcc+yAcc*yAcc))*57.32);
+}
+
+void toggleAllLeds(char delay)
+{
+        HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_15);
+        HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_14);
+        HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_13);
+        HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_12);
+        HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_11);
+        HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_10);
+        HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_9);
+        HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_8);
+        HAL_Delay(delay);
+}
+
+void AllLedSetState(GPIO_PinState STATE)
+{
+        HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,STATE);
+        HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,STATE);
+        HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,STATE);
+        HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,STATE);
+        HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,STATE);
+        HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,STATE);
+        HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9 ,STATE);
+        HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8 ,STATE);
+}
 
 

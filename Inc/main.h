@@ -143,7 +143,9 @@ void StartDefaultTask(void const * argument);
 
 void AngleCalcTask(void const * argument);
 
-void MotorCmdTask(void const * argument);
+void printSerial(void const * argument);
+
+//void MotorCmdTask(void const * argument);
 
 /* USER CODE END Private defines */
 

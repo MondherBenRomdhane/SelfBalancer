@@ -55,3 +55,10 @@ steppertest\lldrivers.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 steppertest\lldrivers.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 steppertest\lldrivers.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 steppertest\lldrivers.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+steppertest\lldrivers.o: ..\Drivers\BSP\stm32f3_discovery_accelerometer.h
+steppertest\lldrivers.o: ..\Drivers\BSP\stm32f3_discovery.h
+steppertest\lldrivers.o: ..\lsm303dlhc\lsm303dlhc.h
+steppertest\lldrivers.o: ..\Drivers\BSP\accelero.h
+steppertest\lldrivers.o: ..\Drivers\BSP\stm32f3_discovery_gyroscope.h
+steppertest\lldrivers.o: ..\l3gd20\l3gd20.h
+steppertest\lldrivers.o: ..\Drivers\BSP\gyro.h
