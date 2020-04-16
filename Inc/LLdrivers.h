@@ -28,7 +28,12 @@
 //the motors sould never operate past this limit
 #define DEAD_ANGLE              24
 
-//#define DEAD_ANGLE              45
+//TODO : these config flags should be moved to an entierly new file .h
+#define DEBUG_SPEED             0
+
+#define DEBUG_ACCEL             1
+
+#define DEBUG_VAL               DEBUG_SPEED
 
 #define BALANCE_RANGE           (0.2)
 
@@ -40,7 +45,7 @@
 
 #define ACTIVE_DELAY_MS            10 
 
-#define ANGLE_OFFSET            (-6.4) // meaning at equilibrium point the sensor reading is 2.6
+#define ANGLE_OFFSET            (-10) // meaning at equilibrium point the sensor reading is 2.6
 
 #define CALIBRATION_CYCLE        20
 
@@ -99,8 +104,14 @@ void toggleAllLeds(char delay);
 
 void AllLedSetState(GPIO_PinState STATE);
 
-//void debugPrint(float arg_CMD_Angle, float speed);
-void debugPrint(float arg_CMD_Angle, int speed);
+#if (DEBUG_VAL == DEBUG_SPEED)
+        void debugPrint(float arg_CMD_Angle, int speed);
+#elif (DEBUG_VAL == DEBUG_ACCEL)
+        void debugPrint(float arg_CMD_Angle, float ACCEL);
+#endif
+
+
+
 
 
 //left motor functions

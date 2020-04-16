@@ -102,10 +102,13 @@ extern TIM_HandleTypeDef htim17;
 
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart3;
 //extern uint8_t Buf[50];
 uint8_t DataBuf[20];
 uint8_t RXBuf[20] ;
-uint8_t RXCounter = 0;
+
+
+float Alpha = ALPHA;
 
     typedef struct {
       double D_Angle;
@@ -117,8 +120,6 @@ uint8_t RXCounter = 0;
     
     volatile int16_t xval, yval ,zval= 0x00; // accel val
     
-    
-    
     float yaw = 0;
     
     extern bool b_DebugEnabled ;
@@ -128,6 +129,7 @@ uint8_t RXCounter = 0;
     ST_CommParam stCurrentState;
     float CMD_Angle=0;
     float Angle;
+//    float Ref_ACCELAngle;
 
     bool enableMotors;
 ///* USER CODE END 0 */
@@ -140,87 +142,7 @@ uint8_t RXCounter = 0;
 ////Timer17 channel1 -> PB5  servo
 
 //extern TIM_HandleTypeDef htim4;
-//void MotorCmdTask(void const * argument)
-//{
-//    init_PWMTimers();
-//    
-//    //HAL_GPIO_WritePin(GPIOF,GPIO_PIN_10,GPIO_PIN_RESET);  // 
-//    //HAL_GPIO_WritePin(GPIOF,GPIO_PIN_9,GPIO_PIN_RESET); //TO DO PF9 ship enable is defective !!!!! is a ctually the pin of the tim 15 !!!!!
-//    //
-//    //HAL_GPIO_WritePin(GPIOC,GPIO_PIN_0,GPIO_PIN_RESET);  // ship enable is low
-//    //HAL_GPIO_WritePin(GPIOC,GPIO_PIN_1,GPIO_PIN_RESET);
-//    float CMD_Angle=0;
-//    char isBalanced ;
-//    for(;;)
-//    {
-//        isBalanced = ' ';
-//        osEvent event = osMailGet(object_pool_q_id , osWaitForever);
-//        properties_t *received = (properties_t *)event.value.p;// ".p" indic ates that the message is a pointer
-//        
-//        osEvent eventCMD = osMailGet(object_pool_q_idCMD , 201);
-//        ST_CommParam *receivedCMD = (ST_CommParam *)eventCMD.value.p;
-//        
-//        //offset for the angle
-//        CMD_Angle = received->D_Angle - receivedCMD->angleOffset;
-//        
-//        if (b_Reeinitialise == false)
-//        {
-//            if (CMD_Angle>0)
-//            {
-//                setLeftStepperDir(Forward);
-//                setRightStepperDir(Forward);
-//            }
-//            else
-//            {
-//                setLeftStepperDir(Backwards);
-//                setRightStepperDir(Backwards);
-//            }
-//            
-//            HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_11);
-//            
-//            HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_RESET);
-//            
-//            //magic!!
-//            ////////////////////////////////////////////////////
-//            calculatePID(receivedCMD,CMD_Angle);
-//            ////////////////////////////////////////////////////
-//            
-//            osMailFree(object_pool_q_id, received);
-//            osMailFree(object_pool_q_idCMD, receivedCMD);
-//            osDelay(100);
-//        }
-//        
-//        if (ABS(CMD_Angle) > DEAD_ANGLE ) //outside the balance range
-//        {
-//            b_Reeinitialise = true; // to wait until put back at the balancing point
-//            receivedCMD->speed=0; //overriding the pid value
-//        }
-//        
-//        if (ABS(CMD_Angle) < BALANCE_RANGE ) // at equilibrium point
-//        {
-//            b_Reeinitialise = false; // start the balancing process only when put at equilibrium point
-//            receivedCMD->speed=0; //overriding the pid value
-//            isBalanced = '*';
-//        }
-//        else
-//        {
-//            HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_RESET);
-//        }
-//        
-//        if (b_DebugEnabled==true)
-//        {
-//            //do not remove this line it is for debug purposes !!
-//            printf("%06.2f;%d;\n\r",CMD_Angle,receivedCMD->speed/*,isBalanced*/); //leading zeros for the sign serial print the output is on 8
-//        }
-//        //else //while debuging motors should never run !!!
-//        //{
-//          //receivedCMD->speed*=0.01;
-//          setMotorCmd(receivedCMD);
-//        //}
-//        
-//        
-//    }
-//}
+
 float imuVAL =0;
 void AngleCalcTask(void const * argument)
 {
@@ -248,17 +170,7 @@ void AngleCalcTask(void const * argument)
     for(;;)
     {
         GanttDebug(3);
-        //read accelero Values///////////////////////////////////////
-        //BSP_ACCELERO_GetXYZ(buffer);
-        //xval = buffer[0];
-        //yval = buffer[1];
-        //zval = buffer[2];
-        //
-        //xAcc=(double)xval/16384;
-        //yAcc=(double)yval/16384;
-        //zAcc=(double)zval/16384;
-        //
-        //yaw = atan(zAcc/sqrt(xAcc*xAcc+yAcc*yAcc))*57.32;
+        
         yaw = getAccelAngle();
         // gyro & final angle read////////////////////////////////////
         BSP_GYRO_GetXYZ(Buffer);
@@ -266,46 +178,22 @@ void AngleCalcTask(void const * argument)
         Xval = Buffer[0];
         Yval = Buffer[1];
         Zval = Buffer[2];
-
-        // this is poorly written !!
-        //this code lets the angle being read the first time only from the accelerometer assuming that the 
-        //robot is not moved at startup time
-        //there should be instead a calibration period in wich the a led blinks and the angle is 
-        //calculated from the RMS of the accel angle
-        //add also the auto couter-action for the gyro drift !!!
-        //if (b_GyroInit == true)
-        //{
-        //    //angle = yaw;
-        //    b_GyroInit = false;
-        //    if (b_GyroCalib == true)
-        //    {
-        //        Angle = yaw;
-        //        b_GyroCalib = false;
-        //    }
-        //}
-        //
-        //samplingCounter++;
-        //if (samplingCounter>GYROSCOPE_DRIFT)
-        //{
-        //    samplingCounter=0;
-        //    b_GyroInit = true;
-        //}
-
-        //Angle = ALPHA*((Xval+X_AXIS_CALIB) *0.0001+Angle)+(1-ALPHA)*yaw; //0.0001 for 100ms!!
-        //Angle = ALPHA*((Xval+X_AXIS_CALIB) * INTEGRATE_DELAY(ACTIVE_DELAY_MS) + Angle)+(1-ALPHA)*yaw;
+        
         if (b_GyroCalib == true)
         {
             Angle = imuVAL;
             b_GyroCalib = false;
         }
         
-        Angle = ALPHA*((Xval/*+X_AXIS_CALIB*/) * 0.00001 + Angle)+(1-ALPHA)*yaw;
+        Angle = Alpha*((Xval) * 0.00001 + Angle)+(1-Alpha)*yaw;
         //Angle = (Xval) * 0.00001 + Angle;
         
         ////begin TASK2//////////////////////////////////////////////////////////////////////////////////////////////////////
         //
         ////offset for the angle
         CMD_Angle = Angle - stCurrentState.angleOffset;
+        //Ref_ACCELAngle = yaw - stCurrentState.angleOffset;
+        
         setStepperAngleDir(CMD_Angle);
         
         if (b_Reeinitialise == false)
@@ -326,16 +214,24 @@ void AngleCalcTask(void const * argument)
         //end TASK2 //////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 }
-
+unsigned char bfr[10] ;
 void printSerial(void const * argument)
 {
+    
+    HAL_UART_Receive_IT(&huart3,bfr,sizeof(bfr));
     for(;;)
     {
         GanttDebug(1);
+#if (DEBUG_VAL == DEBUG_SPEED)
         debugPrint(CMD_Angle, stCurrentState.speed);
-        //debugPrint(yaw, stCurrentState.speed);
+#elif (DEBUG_VAL == DEBUG_ACCEL)
+        debugPrint(CMD_Angle, yaw);
+#endif
         
         HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_14);
+        //HAL_UART_Receive(&huart3,bfr,8,100);
+        printf("--> got :<%s>",bfr);
+        
         osDelay(10);
         setMotorCmd(&stCurrentState);
         
@@ -381,28 +277,51 @@ void USART1_IRQHandler(void)
     }
 }
 
+void USART3_IRQHandler(void)
+{
+    HAL_UART_IRQHandler(&huart3);
+    //HAL_UART_Receive_IT(&huart1,RXBuf,sizeof(RXBuf));
+    //i=strlen((const char *)RXBuf);
+    //if ((RXBuf[i-1]== 0x0D)||(RXBuf[i-1]== 0x0A))//carriage return or line feed
+    {
+        HAL_UART_RxCpltCallback(&huart3);
+        HAL_UART_Receive_IT(&huart2,bfr,sizeof(bfr));
+    }
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    memcpy(DataBuf,RXBuf,sizeof(DataBuf));
-    //printf("HAL_UART_RxCpltCallback\r\n");
-    HAL_UART_Receive_IT(&huart1,RXBuf,sizeof(RXBuf));
-    //printf("DB%s\r\n",DataBuf);
-    RXCounter=0;
-    memset(RXBuf,'\0',sizeof(RXBuf));
-    huart->RxState = HAL_UART_STATE_READY;
+    if (huart==&huart1)
+    {
+        memcpy(DataBuf,RXBuf,sizeof(DataBuf));
+        //printf("HAL_UART_RxCpltCallback\r\n");
+        HAL_UART_Receive_IT(&huart1,RXBuf,sizeof(RXBuf));
+        //printf("DB%s\r\n",DataBuf);
+        memset(RXBuf,'\0',sizeof(RXBuf));
+        huart->RxState = HAL_UART_STATE_READY;
+    }
+    else if (huart==&huart3)
+    {
     
+    }
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-    //errors could be overflow or overrun
-    __NOP();
-   // printf("HAL_UART_ErrorCallback\r\n");
-   // printf("DB:%s\r\n",DataBuf);
-    //clear the data
-    memset(RXBuf,'\0',sizeof(RXBuf));
-    HAL_UART_Receive_IT(&huart1,RXBuf,sizeof(RXBuf));
-    //RXCounter=0;
+    if (huart==&huart1)
+    {
+        //errors could be overflow or overrun
+        __NOP();
+        // printf("HAL_UART_ErrorCallback\r\n");
+        // printf("DB:%s\r\n",DataBuf);
+        //clear the data
+        memset(RXBuf,'\0',sizeof(RXBuf));
+        HAL_UART_Receive_IT(&huart1,RXBuf,sizeof(RXBuf));
+    }
+    else if (huart==&huart3)
+    {
+        
+    }
 }
 
 

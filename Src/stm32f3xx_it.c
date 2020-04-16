@@ -44,6 +44,7 @@
 extern PCD_HandleTypeDef hpcd_USB_FS;
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart3;
 
 extern TIM_HandleTypeDef htim2;
 

@@ -19,6 +19,8 @@
 bool b_DebugEnabled ;
 bool b_Reeinitialise ;
 
+extern float Alpha;
+
 extern char enableMotors;
 //timers declared
 extern TIM_HandleTypeDef htim3;
@@ -87,12 +89,14 @@ void LLDriverCliMenu(uint8_t* Buf,ST_CommParam *stCommParam)
         {
             //printf("\n\rO : Offset\n\rP : KP\n\rI : KI\n\rD : KD\n\rS : Speed\n\r");
             
-            printf("\n\rO : Offset %f\n\rD : KD %f \n\rI : KI %f\n\rP : KP %f\n\rS : Speed %d\n\r",
+            printf("\n\rO : Offset %f\n\rD : KD %f \n\rI : KI %f\n\rP : KP %f\n\rS : Speed %d\n\r : Alpha %f\r\n",
               stCommParam->angleOffset,
               stCommParam->KD,
               stCommParam->KI,
               stCommParam->KP,
-              stCommParam->speed);
+              stCommParam->speed,
+              Alpha
+            );
             osDelay(10);
         }
         
@@ -167,7 +171,12 @@ void LLDriverCliMenu(uint8_t* Buf,ST_CommParam *stCommParam)
                     //printf("speed set OK %d\r\n",stCommParam->speed);
                     osDelay(10);
                 }
-                
+                else if (Value[0]=='A')
+                {
+                    Alpha = atof((const char *)Value+1);
+                    printf("Alpha set OK %f\r\n", Alpha);
+                    osDelay(10);
+                }
                 else if (Value[0]=='M')
                 {
                     char tempvar;
@@ -328,7 +337,7 @@ void initialiseParam(ST_CommParam *stArgCommParam)
         stArgCommParam->KI =0;
         stArgCommParam->KP =20 ;
         stArgCommParam->speed =0;
-        b_DebugEnabled = true;
+        b_DebugEnabled = false;
         b_Reeinitialise = true;
         enableMotors = true;
     }
@@ -337,6 +346,9 @@ void initialiseParam(ST_CommParam *stArgCommParam)
         Error_Handler();
     }
 }
+
+//extern float Ref_ACCELAngle;
+//extern float Angle;
 
 void stateManage(float arg_CMD_Angle, ST_CommParam *stArgCommParam)
 {
@@ -355,6 +367,9 @@ void stateManage(float arg_CMD_Angle, ST_CommParam *stArgCommParam)
             b_Reeinitialise = false; // start the balancing process only when put at equilibrium point
             stArgCommParam->speed=0; //overriding the pid value
             HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_SET);
+            
+            //this is palying with fire !!
+            //Angle = Ref_ACCELAngle;
         }
         else
         {
@@ -369,13 +384,21 @@ void stateManage(float arg_CMD_Angle, ST_CommParam *stArgCommParam)
     
 }
 
+#if (DEBUG_VAL == DEBUG_SPEED)
 void debugPrint(float arg_CMD_Angle, int speed)
+#elif (DEBUG_VAL == DEBUG_ACCEL)
+ void debugPrint(float arg_CMD_Angle, float speed)
+#endif
 {
     if (b_DebugEnabled==true)
         {
             //do not remove this line it is for debug purposes !!
             //printf("%06.2f;%06.2f;\n\r",arg_CMD_Angle,speed); //leading zeros for the sign serial print the output is on 8
+#if (DEBUG_VAL == DEBUG_SPEED)
             printf("%06.2f;%d;\n\r",arg_CMD_Angle,speed); //leading zeros for the sign serial print the output is on 8
+#elif (DEBUG_VAL == DEBUG_ACCEL)
+            printf("%06.2f;%06.2f;\n\r",arg_CMD_Angle,speed); //leading zeros for the sign serial print the output is on 8
+#endif
         }
 }
 
@@ -458,6 +481,7 @@ float calibrateIMU(void)
 
     //for(char i = 0 ; i<CALIBRATION_CYCLE ; i++)
     while ((ABS(CalibYaw)-ABS(calibAngle)>0.5)||(idx<20))
+    //while (1)
     {
         idx++;
         CalibYaw = getAccelAngle();
@@ -465,14 +489,15 @@ float calibrateIMU(void)
         BSP_GYRO_GetXYZ(Buffer);
         
         //calibAngle = (Buffer[0]) * 0.0001 + calibAngle; //pure gyro value 
-        calibAngle = ALPHA_CALIB*((Buffer[0]) * 0.0001 + calibAngle)+(1-ALPHA_CALIB)*CalibYaw;
+        calibAngle = ALPHA_CALIB*((Buffer[0]) * 0.00001 + calibAngle)+(1-ALPHA_CALIB)*CalibYaw;
         
-        toggleAllLeds(100);
-        AllLedSetState(GPIO_PIN_RESET);
-
+        osDelay(10);
+        toggleAllLeds(0);
+        //debugPrint(calibAngle,CalibYaw);
     }
     //calculating gyroscopic drift
     //return(calibAngle/CALIBRATION_CYCLE);
+    AllLedSetState(GPIO_PIN_RESET);
     return(calibAngle);
 }
 

@@ -152,9 +152,9 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>240</LineNumber>
+          <LineNumber>282</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134221812</Address>
+          <Address>134242734</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -163,23 +163,7 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\Initializers\InitMain.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\StepperTest\../Src/Initializers/InitMain.c\240</Expression>
-        </Bp>
-        <Bp>
-          <Number>1</Number>
-          <Type>0</Type>
-          <LineNumber>462</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134249302</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\Src\LLdrivers.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\StepperTest\../Src/LLdrivers.c\462</Expression>
+          <Expression>\\StepperTest\../Src/Initializers/InitMain.c\282</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -289,6 +273,11 @@
           <count>9</count>
           <WinNumber>2</WinNumber>
           <ItemText>idx</ItemText>
+        </Ww>
+        <Ww>
+          <count>10</count>
+          <WinNumber>2</WinNumber>
+          <ItemText>bfr</ItemText>
         </Ww>
       </WatchWindow2>
       <MemoryWindow1>
