@@ -13,6 +13,7 @@
 
 
 #define ABS(X)     ((X>=0)?X:-X)
+extern float AVGYaw;
 //#define MOTOR(N)   (54 * N + 60000)
 //#define TF(N)       (long)trunc(1/(N^2 *0.00002))
 
@@ -20,6 +21,7 @@ bool b_DebugEnabled ;
 bool b_Reeinitialise ;
 
 extern float Alpha;
+extern float GyroDrift;
 
 extern char enableMotors;
 //timers declared
@@ -89,13 +91,14 @@ void LLDriverCliMenu(uint8_t* Buf,ST_CommParam *stCommParam)
         {
             //printf("\n\rO : Offset\n\rP : KP\n\rI : KI\n\rD : KD\n\rS : Speed\n\r");
             
-            printf("\n\rO : Offset %f\n\rD : KD %f \n\rI : KI %f\n\rP : KP %f\n\rS : Speed %d\n\r : Alpha %f\r\n",
+            printf("\n\rO : Offset %f\n\rD : KD %f \n\rI : KI %f\n\rP : KP %f\n\rS : Speed %d\n\rAlpha: %f\r\n GyroDrift: %f\r\n",
               stCommParam->angleOffset,
               stCommParam->KD,
               stCommParam->KI,
               stCommParam->KP,
               stCommParam->speed,
-              Alpha
+              Alpha,
+              GyroDrift
             );
             osDelay(10);
         }
@@ -177,6 +180,12 @@ void LLDriverCliMenu(uint8_t* Buf,ST_CommParam *stCommParam)
                     printf("Alpha set OK %f\r\n", Alpha);
                     osDelay(10);
                 }
+                else if (Value[0]=='G')
+                {
+                    GyroDrift = atof((const char *)Value+1);
+                    printf("Drift set OK %f\r\n", GyroDrift);
+                    osDelay(10);
+                }
                 else if (Value[0]=='M')
                 {
                     char tempvar;
@@ -184,10 +193,12 @@ void LLDriverCliMenu(uint8_t* Buf,ST_CommParam *stCommParam)
                     if (tempvar == 1)
                     {
                         enableMotors = true;
+                        printf("Motors Enabled \r\n");
                     }
                     else if(tempvar == 0)
                     {
                         enableMotors = false;
+                        printf("Motors Disabled \r\n");
                     }
                     else
                     {
@@ -216,6 +227,11 @@ void LLDriverCliMenu(uint8_t* Buf,ST_CommParam *stCommParam)
 
 }
 
+         float previousError = 0; //(used by derivative control)
+        const char setPoint = 0; //radians, set by the user
+         float proportional, derivative, integral;
+         float error =0;
+
 void calculatePID(ST_CommParam *receivedCMD ,float sensorValue) 
 {
     //#define PID_SCALER 0.01
@@ -223,17 +239,21 @@ void calculatePID(ST_CommParam *receivedCMD ,float sensorValue)
     
     if (receivedCMD)
     {
-        static float previousError = 0; //(used by derivative control)
-        const char setPoint = 0; //radians, set by the user
-        static float proportional, derivative, integral;
-        static float error =0;
+        //static float previousError = 0; //(used by derivative control)
+        //const char setPoint = 0; //radians, set by the user
+        //static float proportional, derivative, integral;
+        //static float error =0;
         
-        error = ABS(sensorValue )- setPoint;
+        //error = ABS(sensorValue )- setPoint;
+        
+        error = sensorValue - setPoint;
         
         proportional = error;
-        integral += error * 0.00001f; 
-        derivative = (error - previousError);///0.0001f;
+        integral += error * 0.001f; 
+        derivative = (error - previousError);//*0.001f;
         previousError = error;
+        
+        setStepperAngleDir(error);
         receivedCMD->speed = (proportional*receivedCMD->KP) + (integral*receivedCMD->KI*(PID_SCALER)) + (derivative*receivedCMD->KD*(PID_SCALER));
     }
 }
@@ -333,10 +353,10 @@ void initialiseParam(ST_CommParam *stArgCommParam)
     if (stArgCommParam)
     {
         stArgCommParam->angleOffset=ANGLE_OFFSET; //this is a mechanical constraint XD !
-        stArgCommParam->KD =0;
-        stArgCommParam->KI =0;
-        stArgCommParam->KP =20 ;
-        stArgCommParam->speed =0;
+        stArgCommParam->KD = KD_M;
+        stArgCommParam->KI = KI_M;
+        stArgCommParam->KP = KP_M ;
+        stArgCommParam->speed = 0;
         b_DebugEnabled = false;
         b_Reeinitialise = true;
         enableMotors = true;
@@ -352,6 +372,8 @@ void initialiseParam(ST_CommParam *stArgCommParam)
 
 void stateManage(float arg_CMD_Angle, ST_CommParam *stArgCommParam)
 {
+    bool bAngValOK=false;
+    static char CurrState;
     if (stArgCommParam)
     {
         //outside the balance range
@@ -363,17 +385,15 @@ void stateManage(float arg_CMD_Angle, ST_CommParam *stArgCommParam)
         
         // at equilibrium point
         if (arg_CMD_Angle < BALANCE_RANGE )
+        //if (AVGYaw - stArgCommParam->angleOffset < BALANCE_RANGE )
         {
             b_Reeinitialise = false; // start the balancing process only when put at equilibrium point
             stArgCommParam->speed=0; //overriding the pid value
             HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_SET);
-            
-            //this is palying with fire !!
-            //Angle = Ref_ACCELAngle;
         }
         else
         {
-            //what the ??? (is the led working to indicate that the rob is at equilibrium pt.)
+            //led is not on when not at equilibrium point ! 
             HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_RESET);
         }
     }
@@ -397,7 +417,8 @@ void debugPrint(float arg_CMD_Angle, int speed)
 #if (DEBUG_VAL == DEBUG_SPEED)
             printf("%06.2f;%d;\n\r",arg_CMD_Angle,speed); //leading zeros for the sign serial print the output is on 8
 #elif (DEBUG_VAL == DEBUG_ACCEL)
-            printf("%06.2f;%06.2f;\n\r",arg_CMD_Angle,speed); //leading zeros for the sign serial print the output is on 8
+            //printf("G%06.2f;%06.2f;\n\r",arg_CMD_Angle,arg_CMD_Angle-ANGLE_OFFSET,speed); //leading zeros for the sign serial print the output is on 8
+            printf("%06.2f//%06.2f//%06.2f;\n\r",arg_CMD_Angle,arg_CMD_Angle+ANGLE_OFFSET,speed);
 #endif
         }
 }
@@ -472,21 +493,26 @@ void GanttDebug(char idx)
     //float CalibYaw = 90;
     //float calibAngle = 0;
 
+long CalibGyrovalue = 0;
+
 float calibrateIMU(void)
 {
     float Buffer[1];
     float CalibYaw = 90;
     float calibAngle = 0;
     char idx = 0;
+    
 
-    //for(char i = 0 ; i<CALIBRATION_CYCLE ; i++)
-    while ((ABS(CalibYaw)-ABS(calibAngle)>0.5)||(idx<20))
+    for(int i = 0 ; i < CALIBRATION_CYCLE ; i++)
+    //while ((ABS(CalibYaw)-ABS(calibAngle)>0.5)||(idx<20))
     //while (1)
     {
         idx++;
         CalibYaw = getAccelAngle();
         
         BSP_GYRO_GetXYZ(Buffer);
+        
+        CalibGyrovalue+=Buffer[0];
         
         //calibAngle = (Buffer[0]) * 0.0001 + calibAngle; //pure gyro value 
         calibAngle = ALPHA_CALIB*((Buffer[0]) * 0.00001 + calibAngle)+(1-ALPHA_CALIB)*CalibYaw;
@@ -497,14 +523,15 @@ float calibrateIMU(void)
     }
     //calculating gyroscopic drift
     //return(calibAngle/CALIBRATION_CYCLE);
+    CalibGyrovalue/=500;
     AllLedSetState(GPIO_PIN_RESET);
     return(calibAngle);
 }
-
+double xAcc , yAcc, zAcc = 0;
 float getAccelAngle(void)
 {
     int16_t buffer[3] = {0};
-    double xAcc , yAcc, zAcc = 0;
+    //double xAcc , yAcc, zAcc = 0;
     
     BSP_ACCELERO_GetXYZ(buffer);
     
@@ -540,4 +567,26 @@ void AllLedSetState(GPIO_PinState STATE)
         HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8 ,STATE);
 }
 
+#define AVGNBR     100
+float AVG(float newVal)
+{
+    static char i;
+    static float AVGTAB [AVGNBR] = {0};
+    static float sum;
+    
+    sum-=AVGTAB[i];
+    
+    sum+=newVal;
+    AVGTAB[i] = newVal;
+    
+    if (i == (AVGNBR-1))
+    {
+        i=0;
+    }
+    else
+    {
+        i++;   
+    }
+    return(sum/AVGNBR);
+}
 

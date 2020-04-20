@@ -17,7 +17,7 @@
 
 
 #define ABS(X)     ((X>=0)?X:-X)
-#define GYROSCOPE_DRIFT         40
+
 
 //when the object is static we notice that the raw values are 
 //around -550 these results in significant Drift! this vlue is to compensate that 
@@ -33,7 +33,7 @@
 
 #define DEBUG_ACCEL             1
 
-#define DEBUG_VAL               DEBUG_SPEED
+#define DEBUG_VAL               DEBUG_ACCEL
 
 #define BALANCE_RANGE           (0.2)
 
@@ -45,9 +45,16 @@
 
 #define ACTIVE_DELAY_MS            10 
 
-#define ANGLE_OFFSET            (-10) // meaning at equilibrium point the sensor reading is 2.6
+#define ANGLE_OFFSET            (-5) // meaning at equilibrium point the sensor reading is 2.6
 
-#define CALIBRATION_CYCLE        20
+#define CALIBRATION_CYCLE        500
+
+#define GYROSCOPE_DRIFT         0.02
+
+#define KP_M                    (30)
+#define KI_M                    (0)
+#define KD_M                    (0)
+
 
 typedef enum
 {
@@ -87,6 +94,7 @@ typedef struct{
     //uint8_t  u16_SizeISR ;
 }ST_UART1_ISR;
 
+float AVG(float newVal);
 
 void init_PWMTimers(void);
 

@@ -107,8 +107,11 @@ extern UART_HandleTypeDef huart3;
 uint8_t DataBuf[20];
 uint8_t RXBuf[20] ;
 
+osThreadId PrintserialID;
+osThreadId defaultTaskID;
 
 float Alpha = ALPHA;
+float GyroDrift = GYROSCOPE_DRIFT;
 
     typedef struct {
       double D_Angle;
@@ -121,6 +124,7 @@ float Alpha = ALPHA;
     volatile int16_t xval, yval ,zval= 0x00; // accel val
     
     float yaw = 0;
+    float AVGYaw = 0;
     
     extern bool b_DebugEnabled ;
     extern bool b_Reeinitialise;
@@ -156,6 +160,7 @@ void AngleCalcTask(void const * argument)
     //this variable allows that the gyroscope value could be updated from the accelerometer
     bool b_GyroInit = true;
     bool b_GyroCalib = true;
+    extern long CalibGyrovalue ;
     //this variable prevents the gyroscopic drift
     uint8_t samplingCounter = 0;
     
@@ -166,7 +171,8 @@ void AngleCalcTask(void const * argument)
     //TickType_t xLastWakeTime;
     //xLastWakeTime = osKernelSysTick();
     
-    
+    //osThreadTerminate(PrintserialID);
+    //osThreadTerminate(defaultTaskID);
     for(;;)
     {
         GanttDebug(3);
@@ -185,16 +191,29 @@ void AngleCalcTask(void const * argument)
             b_GyroCalib = false;
         }
         
-        Angle = Alpha*((Xval) * 0.00001 + Angle)+(1-Alpha)*yaw;
+        //highpass filter (Manual :( !)
+        if (ABS(Xval)<1000)
+        { 
+            // filter values lower than 1000 wich are basically just noise
+            Xval = 0;
+        }
+        //else
+        //{
+        //    // because noise is still inside the values
+        //    Xval = Xval - CalibGyrovalue;
+        //}
+        AVGYaw = AVG(yaw);
+        //Angle = Alpha*((Xval-GyroDrift) * 0.00001 + Angle)+(1-Alpha)*trunc(yaw);
+        Angle = Alpha*((Xval-GyroDrift) * 0.00001 + Angle)+(1-Alpha)*AVGYaw;
         //Angle = (Xval) * 0.00001 + Angle;
         
         ////begin TASK2//////////////////////////////////////////////////////////////////////////////////////////////////////
         //
         ////offset for the angle
-        CMD_Angle = Angle - stCurrentState.angleOffset;
+        CMD_Angle = Angle - stCurrentState.angleOffset - GyroDrift;
         //Ref_ACCELAngle = yaw - stCurrentState.angleOffset;
         
-        setStepperAngleDir(CMD_Angle);
+        //setStepperAngleDir(CMD_Angle);
         
         if (b_Reeinitialise == false)
         {
@@ -205,10 +224,11 @@ void AngleCalcTask(void const * argument)
         //this function is responsible for the handling of the balance state and the fail  state case
         stateManage(ABS(CMD_Angle), &stCurrentState);
         
-        //setMotorCmd(&stCurrentState);
+        setMotorCmd(&stCurrentState);
         
         //osDelay(ACTIVE_DELAY_MS);
         osDelay(10);
+        //HAL_Delay(9);
         HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_11);
         
         //end TASK2 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -219,6 +239,8 @@ void printSerial(void const * argument)
 {
     
     HAL_UART_Receive_IT(&huart3,bfr,sizeof(bfr));
+    PrintserialID = osThreadGetId();
+    
     for(;;)
     {
         GanttDebug(1);
@@ -230,10 +252,10 @@ void printSerial(void const * argument)
         
         HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_14);
         //HAL_UART_Receive(&huart3,bfr,8,100);
-        printf("--> got :<%s>",bfr);
+        // printf("--> got :<%s>",bfr);
         
         osDelay(10);
-        setMotorCmd(&stCurrentState);
+        //setMotorCmd(&stCurrentState);
         
     }
 }
@@ -242,6 +264,7 @@ void printSerial(void const * argument)
 void StartDefaultTask(void const * argument)
 {
     
+    defaultTaskID = osThreadGetId();
     /* init code for USB_DEVICE */
     MX_USB_DEVICE_Init();
     enableLeftMDriver(Enable);
