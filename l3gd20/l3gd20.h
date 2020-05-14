@@ -158,9 +158,9 @@
 /** @defgroup Full_Scale_Sensitivity 
   * @{
   */
-#define L3GD20_SENSITIVITY_250DPS  ((float)8.75f)         /*!< gyroscope sensitivity with 250 dps full scale [DPS/LSB]  */
-#define L3GD20_SENSITIVITY_500DPS  ((float)17.50f)        /*!< gyroscope sensitivity with 500 dps full scale [DPS/LSB]  */
-#define L3GD20_SENSITIVITY_2000DPS ((float)70.00f)        /*!< gyroscope sensitivity with 2000 dps full scale [DPS/LSB] */
+#define L3GD20_SENSITIVITY_250DPS  ((float)8.75f)*0.001         /*!< gyroscope sensitivity with 250 dps full scale [DPS/LSB]  */
+#define L3GD20_SENSITIVITY_500DPS  ((float)17.50f)*0.001        /*!< gyroscope sensitivity with 500 dps full scale [DPS/LSB]  */
+#define L3GD20_SENSITIVITY_2000DPS ((float)70.00f)*0.001        /*!< gyroscope sensitivity with 2000 dps full scale [DPS/LSB] */
 /**
   * @}
   */

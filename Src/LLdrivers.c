@@ -11,9 +11,13 @@
 #include "stm32f3_discovery_accelerometer.h"
 #include "stm32f3_discovery_gyroscope.h"
 
+extern E_SytemState e_CurrState;
+extern E_SytemSubState e_CurrSubState;
 
 #define ABS(X)     ((X>=0)?X:-X)
 extern float AVGYaw;
+double xAcc , yAcc, zAcc = 0;
+double nxAcc , nyAcc, nzAcc = 0;
 //#define MOTOR(N)   (54 * N + 60000)
 //#define TF(N)       (long)trunc(1/(N^2 *0.00002))
 
@@ -30,6 +34,7 @@ extern TIM_HandleTypeDef htim4;
 extern TIM_HandleTypeDef htim15;
 extern TIM_HandleTypeDef htim16;
 extern TIM_HandleTypeDef htim17;
+extern TIM_HandleTypeDef htim7;
 
 
 double TF(double N)
@@ -227,34 +232,59 @@ void LLDriverCliMenu(uint8_t* Buf,ST_CommParam *stCommParam)
 
 }
 
-         float previousError = 0; //(used by derivative control)
-        const char setPoint = 0; //radians, set by the user
-         float proportional, derivative, integral;
-         float error =0;
-
+    float error =0;
+    int PID_Output = 0;
+    static volatile float balanceSetPoint = 0;
 void calculatePID(ST_CommParam *receivedCMD ,float sensorValue) 
 {
     //#define PID_SCALER 0.01
     #define PID_SCALER 1
+    extern float Xval;
+    extern float GyroDrift;
+    float previousError = 0; //(used by derivative control)
+    char  PID_setPoint = 0 ; //radians, set by the user
+    float proportional, derivative, integral;
     
     if (receivedCMD)
     {
-        //static float previousError = 0; //(used by derivative control)
-        //const char setPoint = 0; //radians, set by the user
-        //static float proportional, derivative, integral;
-        //static float error =0;
+        if (e_CurrState==E_STATE_Balancing)
+        {
+            error = sensorValue - balanceSetPoint - PID_setPoint;
         
-        //error = ABS(sensorValue )- setPoint;
-        
-        error = sensorValue - setPoint;
-        
-        proportional = error;
-        integral += error * 0.001f; 
-        derivative = (error - previousError);//*0.001f;
-        previousError = error;
-        
-        setStepperAngleDir(error);
-        receivedCMD->speed = (proportional*receivedCMD->KP) + (integral*receivedCMD->KI*(PID_SCALER)) + (derivative*receivedCMD->KD*(PID_SCALER));
+            proportional = error;
+            integral += error * 0.001f; 
+            derivative = (error - previousError)*0.01f;
+            previousError = error;
+            
+            setStepperAngleDir(error);
+            
+            PID_Output =
+            (proportional*receivedCMD->KP)+
+            (integral * receivedCMD->KI)+
+            (derivative *receivedCMD->KD);
+            
+            if (PID_setPoint==0)
+            {
+                if (PID_Output<0)
+                {
+                    balanceSetPoint=balanceSetPoint + 0.05 ;
+                    //balanceSetPoint++;
+                }
+                if (PID_Output>0)
+                {
+                    balanceSetPoint=balanceSetPoint - 0.05 ;
+                    //balanceSetPoint--;
+                }
+            }
+        }
+        else
+        {
+            integral = 0;
+            balanceSetPoint = 0;
+            PID_Output = 0;
+        }
+
+         receivedCMD->speed = PID_Output;
     }
 }
 
@@ -313,6 +343,19 @@ void setLeftStepperMode(E_StepperMode E_Mode)
             HAL_GPIO_WritePin(GPIOD,GPIO_PIN_2,GPIO_PIN_SET);   //--->
             HAL_GPIO_WritePin(GPIOD,GPIO_PIN_3,GPIO_PIN_RESET); //--->
             break;
+
+        case(Eigth_S):
+            HAL_GPIO_WritePin(GPIOD,GPIO_PIN_1,GPIO_PIN_SET); //--->
+            HAL_GPIO_WritePin(GPIOD,GPIO_PIN_2,GPIO_PIN_SET);   //--->
+            HAL_GPIO_WritePin(GPIOD,GPIO_PIN_3,GPIO_PIN_RESET); //--->
+            break;
+        
+        case(Sixteenth_S):
+            HAL_GPIO_WritePin(GPIOD,GPIO_PIN_1,GPIO_PIN_SET); //--->
+            HAL_GPIO_WritePin(GPIOD,GPIO_PIN_2,GPIO_PIN_SET);   //--->
+            HAL_GPIO_WritePin(GPIOD,GPIO_PIN_3,GPIO_PIN_SET); //--->
+            break;
+        
         default:
             break;
     }
@@ -343,6 +386,19 @@ void setRightStepperMode(E_StepperMode E_Mode)
             HAL_GPIO_WritePin(GPIOA,GPIO_PIN_1,GPIO_PIN_SET);   //--->
             HAL_GPIO_WritePin(GPIOC,GPIO_PIN_0,GPIO_PIN_RESET); //--->
             break;
+        
+        case(Eigth_S):
+            HAL_GPIO_WritePin(GPIOF,GPIO_PIN_2,GPIO_PIN_SET);   //--->
+            HAL_GPIO_WritePin(GPIOA,GPIO_PIN_1,GPIO_PIN_SET); //--->
+            HAL_GPIO_WritePin(GPIOC,GPIO_PIN_0,GPIO_PIN_RESET); //--->
+            break;
+            
+        case(Sixteenth_S):
+            HAL_GPIO_WritePin(GPIOF,GPIO_PIN_2,GPIO_PIN_SET); //--->
+            HAL_GPIO_WritePin(GPIOA,GPIO_PIN_1,GPIO_PIN_SET);   //--->
+            HAL_GPIO_WritePin(GPIOC,GPIO_PIN_0,GPIO_PIN_SET); //--->
+            break;
+        
         default:
             break;
     }
@@ -357,7 +413,7 @@ void initialiseParam(ST_CommParam *stArgCommParam)
         stArgCommParam->KI = KI_M;
         stArgCommParam->KP = KP_M ;
         stArgCommParam->speed = 0;
-        b_DebugEnabled = false;
+        b_DebugEnabled = true;
         b_Reeinitialise = true;
         enableMotors = true;
     }
@@ -369,33 +425,88 @@ void initialiseParam(ST_CommParam *stArgCommParam)
 
 //extern float Ref_ACCELAngle;
 //extern float Angle;
+float speed;
 
 void stateManage(float arg_CMD_Angle, ST_CommParam *stArgCommParam)
 {
-    bool bAngValOK=false;
-    static char CurrState;
+    speed = stArgCommParam->speed;
+    static unsigned int driftCounter = 0;
+    extern float AVGYaw ;
     if (stArgCommParam)
     {
-        //outside the balance range
-        if (arg_CMD_Angle > DEAD_ANGLE ) 
+        switch (e_CurrState)
         {
-            b_Reeinitialise = true; // to wait until put back at the balancing point
+         case E_STATE_Balancing:
+            if(arg_CMD_Angle > DEAD_ANGLE)
+                e_CurrState = E_STATE_Fall;
+            
+            if (arg_CMD_Angle < BALANCE_RANGE )
+            {
+                e_CurrSubState = E_SSTATE_EQ;
+                
+                //b_Reeinitialise = false; // start the balancing process only when put at equilibrium point
+                stArgCommParam->speed=0; //overriding the pid value
+                //Alpha = ALPHA; WTF ????
+                HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_SET);
+                //driftCounter++;
+            }
+            else
+            {
+                e_CurrSubState = E_SSTATE_OUT;
+                HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_RESET);
+            }
+             break;
+         
+         case E_STATE_Fall:
+            //b_Reeinitialise = true; // to wait until put back at the balancing point
             stArgCommParam->speed=0; //overriding the pid value
+            Alpha = ALPHA_CALIB; //to avoid setpoint drifts read from accelerometer !!
+            if(arg_CMD_Angle < BALANCE_RANGE)
+            {
+                Alpha = ALPHA;
+                e_CurrState = E_STATE_Balancing;
+            }
+             break;
+         
+        // case E_STATE_Calibrating:
+        //    
+        //   break;
+         
+         default:
+             break;
         }
         
-        // at equilibrium point
-        if (arg_CMD_Angle < BALANCE_RANGE )
-        //if (AVGYaw - stArgCommParam->angleOffset < BALANCE_RANGE )
-        {
-            b_Reeinitialise = false; // start the balancing process only when put at equilibrium point
-            stArgCommParam->speed=0; //overriding the pid value
-            HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_SET);
-        }
-        else
-        {
-            //led is not on when not at equilibrium point ! 
-            HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_RESET);
-        }
+            
+        //outside the balance range
+        //if (arg_CMD_Angle > DEAD_ANGLE) 
+        //{
+        //    //b_Reeinitialise = true; // to wait until put back at the balancing point
+        //    //stArgCommParam->speed=0; //overriding the pid value
+        //    ////to avoid setpoint drifts read from accelerometer !!
+        //    //Alpha = ALPHA_CALIB;
+        //}
+        //
+        //// at equilibrium point
+        //if (arg_CMD_Angle < BALANCE_RANGE )
+        ////if (AVGYaw - stArgCommParam->angleOffset < BALANCE_RANGE )
+        //{
+        //    b_Reeinitialise = false; // start the balancing process only when put at equilibrium point
+        //    stArgCommParam->speed=0; //overriding the pid value
+        //    Alpha = ALPHA;
+        //    HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_SET);
+        //    driftCounter++;
+        //    //if ((driftCounter > 500)&&(ABS(AVGYaw)<BALANCE_RANGE))
+        //    //{
+        //    //    //Alpha = 0.8; // all value is read from accelerometer !!!
+        //    //    driftCounter=0;
+        //    //}
+        //}
+        //else
+        //{
+        //    //led is not on when not at equilibrium point ! 
+        //    HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_RESET);
+        //    driftCounter++;
+        //}
     }
     else
     {
@@ -410,6 +521,9 @@ void debugPrint(float arg_CMD_Angle, int speed)
  void debugPrint(float arg_CMD_Angle, float speed)
 #endif
 {
+extern float yaw;
+extern float Xval,Xval1,Angle,sum1,sum2,AOA;
+
     if (b_DebugEnabled==true)
         {
             //do not remove this line it is for debug purposes !!
@@ -418,9 +532,12 @@ void debugPrint(float arg_CMD_Angle, int speed)
             printf("%06.2f;%d;\n\r",arg_CMD_Angle,speed); //leading zeros for the sign serial print the output is on 8
 #elif (DEBUG_VAL == DEBUG_ACCEL)
             //printf("G%06.2f;%06.2f;\n\r",arg_CMD_Angle,arg_CMD_Angle-ANGLE_OFFSET,speed); //leading zeros for the sign serial print the output is on 8
-            printf("%06.2f//%06.2f//%06.2f;\n\r",arg_CMD_Angle,arg_CMD_Angle+ANGLE_OFFSET,speed);
-#endif
-        }
+            //printf("%06.2f;%06.2f;%06.2f;\n\r",arg_CMD_Angle,speed,yaw/*,strDebug*/);
+            //printf("%06.2f;%06.2f;%06.2f;;%06.2f\n\r",Xval,sum1,Angle,yaw);
+            printf("%06.2f;%06.2f;%06.2f;%06.2f;%06.2f;\n\r",sum2*1000,sum1*1000,AOA*1000,Angle,yaw);
+            //printf("%06.2f;%06.2f;0.0;0.0;\n\r",arg_CMD_Angle,speed);
+#endif      
+        }   
 }
 
 void setStepperMotorMode(E_StepperMode E_Mode)
@@ -489,59 +606,6 @@ void GanttDebug(char idx)
     }
 }
 
-    //float Buffer[1];
-    //float CalibYaw = 90;
-    //float calibAngle = 0;
-
-long CalibGyrovalue = 0;
-
-float calibrateIMU(void)
-{
-    float Buffer[1];
-    float CalibYaw = 90;
-    float calibAngle = 0;
-    char idx = 0;
-    
-
-    for(int i = 0 ; i < CALIBRATION_CYCLE ; i++)
-    //while ((ABS(CalibYaw)-ABS(calibAngle)>0.5)||(idx<20))
-    //while (1)
-    {
-        idx++;
-        CalibYaw = getAccelAngle();
-        
-        BSP_GYRO_GetXYZ(Buffer);
-        
-        CalibGyrovalue+=Buffer[0];
-        
-        //calibAngle = (Buffer[0]) * 0.0001 + calibAngle; //pure gyro value 
-        calibAngle = ALPHA_CALIB*((Buffer[0]) * 0.00001 + calibAngle)+(1-ALPHA_CALIB)*CalibYaw;
-        
-        osDelay(10);
-        toggleAllLeds(0);
-        //debugPrint(calibAngle,CalibYaw);
-    }
-    //calculating gyroscopic drift
-    //return(calibAngle/CALIBRATION_CYCLE);
-    CalibGyrovalue/=500;
-    AllLedSetState(GPIO_PIN_RESET);
-    return(calibAngle);
-}
-double xAcc , yAcc, zAcc = 0;
-float getAccelAngle(void)
-{
-    int16_t buffer[3] = {0};
-    //double xAcc , yAcc, zAcc = 0;
-    
-    BSP_ACCELERO_GetXYZ(buffer);
-    
-    xAcc=(double)buffer[0]/16384;
-    yAcc=(double)buffer[1]/16384;
-    zAcc=(double)buffer[2]/16384;
-
-    return (atan(zAcc/sqrt(xAcc*xAcc+yAcc*yAcc))*57.32);
-}
-
 void toggleAllLeds(char delay)
 {
         HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_15);
@@ -567,10 +631,47 @@ void AllLedSetState(GPIO_PinState STATE)
         HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8 ,STATE);
 }
 
-#define AVGNBR     100
+
+float fyaw = 0;
+float getAccelAngle(void)
+{
+    int16_t buffer[3] = {0};
+
+    
+    BSP_ACCELERO_GetXYZ(buffer);
+    
+    xAcc=(double)buffer[0]/16384;
+    yAcc=(double)buffer[1]/16384;
+    zAcc=(double)buffer[2]/16384;
+    
+    if (e_CurrState==E_STATE_Balancing)
+    {
+        nxAcc=AccelAVGX(xAcc);
+        nyAcc=AccelAVGY(yAcc);
+        nzAcc=AccelAVGZ(zAcc);
+    }
+    else
+    {
+      nxAcc=xAcc;
+      nyAcc=yAcc;
+      nzAcc=zAcc;
+    }
+    
+    //calibrate offset
+    //xAcc-=0.04;
+    //yAcc-=0.09;
+    //zAcc-=0.04;
+    
+    //fyaw = ((atan(zAcc/sqrt(xAcc*xAcc+yAcc*yAcc))*57.32));
+    //return ((atan(zAcc/sqrt(xAcc*xAcc+yAcc*yAcc))*57.32));
+    return (atan(nzAcc/sqrt(nxAcc*nxAcc+nyAcc*nyAcc))*57.32);
+    
+}
+
+#define AVGNBR     200
 float AVG(float newVal)
 {
-    static char i;
+    static int i;
     static float AVGTAB [AVGNBR] = {0};
     static float sum;
     
@@ -590,3 +691,138 @@ float AVG(float newVal)
     return(sum/AVGNBR);
 }
 
+#define AVGNBRAOA     501
+static char toto = 0;
+float AVGOAVG(float newVal,char reeinit)
+{
+    static int i;
+    static float AVGOTAB [AVGNBRAOA] = {0};
+    static float sumAOA;
+    
+
+    if (reeinit == 1)
+    {
+        toto = 1;
+    }
+    else
+    {
+        toto=2;
+    }
+    
+    if (toto == 1)
+    {
+        for (int j=0;j<AVGNBRAOA;j++)
+        {
+            AVGOTAB[j] = newVal;
+            sumAOA = newVal*AVGNBRAOA;
+        }
+    }
+    else if (toto == 2)
+    {
+        sumAOA-=AVGOTAB[i];
+        
+        sumAOA+=newVal;
+        AVGOTAB[i] = newVal;
+        
+        if (i == (AVGNBRAOA-1))
+        {
+            i=0;
+        }
+        else
+        {
+            i++;   
+        }
+    }
+    
+    return(sumAOA/AVGNBRAOA);
+}
+
+#define AVGNBRAOA2     50
+float AVGOAVGOAVG(float newVal)
+{
+    static int i;
+    static float AVGOTAB2 [AVGNBRAOA2] = {0};
+    static float sumAOA;
+    
+    sumAOA-=AVGOTAB2[i];
+    
+    sumAOA+=newVal;
+    AVGOTAB2[i] = newVal;
+    
+    if (i == (AVGNBRAOA2-1))
+    {
+        i=0;
+    }
+    else
+    {
+        i++;   
+    }
+    return(sumAOA/AVGNBRAOA2);
+}
+
+#define AVGNBR_ACCEL     150
+float AccelAVGX(float newVal)
+{
+    static int i;
+    static float AVGTAB [AVGNBR_ACCEL] = {0};
+    static float sum;
+    
+    sum-=AVGTAB[i];
+    
+    sum+=newVal;
+    AVGTAB[i] = newVal;
+    
+    if (i == (AVGNBR_ACCEL-1))
+    {
+        i=0;
+    }
+    else
+    {
+        i++;   
+    }
+    return(sum/AVGNBR_ACCEL);
+}
+
+float AccelAVGY(float newVal)
+{
+    static int i;
+    static float AVGTAB [AVGNBR_ACCEL] = {0};
+    static float sum;
+    
+    sum-=AVGTAB[i];
+    
+    sum+=newVal;
+    AVGTAB[i] = newVal;
+    
+    if (i == (AVGNBR_ACCEL-1))
+    {
+        i=0;
+    }
+    else
+    {
+        i++;   
+    }
+    return(sum/AVGNBR_ACCEL);
+}
+
+float AccelAVGZ(float newVal)
+{
+    static int i;
+    static float AVGTAB [AVGNBR_ACCEL] = {0};
+    static float sum;
+    
+    sum-=AVGTAB[i];
+    
+    sum+=newVal;
+    AVGTAB[i] = newVal;
+    
+    if (i == (AVGNBR_ACCEL-1))
+    {
+        i=0;
+    }
+    else
+    {
+        i++;   
+    }
+    return(sum/AVGNBR_ACCEL);
+}

@@ -48,6 +48,8 @@ extern UART_HandleTypeDef huart3;
 
 extern TIM_HandleTypeDef htim2;
 
+extern TIM_HandleTypeDef htim7;
+
 /******************************************************************************/
 /*            Cortex-M4 Processor Interruption and Exception Handlers         */ 
 /******************************************************************************/
@@ -208,6 +210,14 @@ void TIM2_IRQHandler(void)
 
   /* USER CODE END TIM2_IRQn 1 */
 }
+
+
+/**
+* @brief This function handles TIM7 global interrupt.
+*/
+
+
+
 
 /**
 * @brief This function handles USART1 global interrupt / USART1 wake-up interrupt through EXTI line 25.

@@ -9,6 +9,11 @@
 #define STR_DELIM   ';'
 #define ENTER_ASCII 0x0D
 
+#define STR_DEBUG_ON   '*'
+#define STR_DEBUG_OFF  ' '
+
+#define ANGLE_VERIF_TSH           10
+#define ANGLE_VERIF_MAX_SAMPL     500
 
 #define OMEGA_MAX   3
 #define STEPPER_MODE 2
@@ -39,21 +44,38 @@
 
 #define ALPHA                   (0.999)
 
-#define ALPHA_CALIB             (0.9)
+#define ALPHA_CALIB             (0)
 
-#define INTEGRATE_DELAY(X)     (X*0.000001)
+#define INTEGRATE_DELAY(X)     (X*0.001)
 
 #define ACTIVE_DELAY_MS            10 
 
-#define ANGLE_OFFSET            (-5) // meaning at equilibrium point the sensor reading is 2.6
+#define ANGLE_OFFSET            (-2.5) // meaning at equilibrium point the sensor reading is 2.6
 
 #define CALIBRATION_CYCLE        500
 
 #define GYROSCOPE_DRIFT         0.02
 
-#define KP_M                    (30)
+#define KP_M                    (60)
 #define KI_M                    (0)
 #define KD_M                    (0)
+
+
+typedef enum
+{
+E_STATE_Balancing,
+E_STATE_Fall,
+E_STATE_Calibrating,
+E_STATE_POSTCalibVERIF
+}E_SytemState;
+
+
+
+typedef enum
+{
+E_SSTATE_EQ,
+E_SSTATE_OUT,
+}E_SytemSubState;
 
 
 typedef enum
@@ -95,6 +117,13 @@ typedef struct{
 }ST_UART1_ISR;
 
 float AVG(float newVal);
+float AccelAVGX(float newVal);
+float AccelAVGY(float newVal);
+float AccelAVGZ(float newVal);
+
+float AVGOAVG(float newVal,char reeinit);
+float AVGOAVGOAVG(float newVal);
+
 
 void init_PWMTimers(void);
 

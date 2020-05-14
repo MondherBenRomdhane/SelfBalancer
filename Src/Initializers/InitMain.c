@@ -99,6 +99,7 @@ extern TIM_HandleTypeDef htim4;
 extern TIM_HandleTypeDef htim15;
 extern TIM_HandleTypeDef htim16;
 extern TIM_HandleTypeDef htim17;
+extern TIM_HandleTypeDef htim7;
 
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
@@ -110,8 +111,13 @@ uint8_t RXBuf[20] ;
 osThreadId PrintserialID;
 osThreadId defaultTaskID;
 
-float Alpha = ALPHA;
+volatile float Alpha ;
 float GyroDrift = GYROSCOPE_DRIFT;
+static float sum = 0;
+static float Asum = 0;
+float sum1,sum2,AOA;
+E_SytemState e_CurrState = E_STATE_Calibrating;
+E_SytemSubState e_CurrSubState;
 
     typedef struct {
       double D_Angle;
@@ -129,6 +135,7 @@ float GyroDrift = GYROSCOPE_DRIFT;
     extern bool b_DebugEnabled ;
     extern bool b_Reeinitialise;
     volatile float Xval,Yval,Yval1,Zval = 0x00; //gyro val
+    volatile float Xval1=0;
     
     ST_CommParam stCurrentState;
     float CMD_Angle=0;
@@ -147,77 +154,38 @@ float GyroDrift = GYROSCOPE_DRIFT;
 
 //extern TIM_HandleTypeDef htim4;
 
-float imuVAL =0;
+float Buffer[3];
+//float imuVAL =0;
+float CALL_angle;
+char reeinitfilter=false;
 void AngleCalcTask(void const * argument)
 {
     BSP_ACCELERO_Init();
     BSP_GYRO_Init();
     init_PWMTimers();
     
-    int16_t buffer[3] = {0};
-    float Buffer[3];
+//this variable prevents the gyroscopic drift
     
-    //this variable allows that the gyroscope value could be updated from the accelerometer
-    bool b_GyroInit = true;
-    bool b_GyroCalib = true;
-    extern long CalibGyrovalue ;
-    //this variable prevents the gyroscopic drift
-    uint8_t samplingCounter = 0;
-    
-    imuVAL = calibrateIMU();
-    
+    HAL_TIM_Base_Start_IT(&htim7);
     osDelay(10);//this is a time bomb! the queue pointer is null if this task starts first that's why we delay XD !
     
-    //TickType_t xLastWakeTime;
-    //xLastWakeTime = osKernelSysTick();
     
     //osThreadTerminate(PrintserialID);
     //osThreadTerminate(defaultTaskID);
+
+    
     for(;;)
     {
         GanttDebug(3);
         
         yaw = getAccelAngle();
-        // gyro & final angle read////////////////////////////////////
-        BSP_GYRO_GetXYZ(Buffer);
+        
+        Angle = Alpha* Angle +(1-Alpha)*yaw;
 
-        Xval = Buffer[0];
-        Yval = Buffer[1];
-        Zval = Buffer[2];
+        CMD_Angle = Angle - stCurrentState.angleOffset;
         
-        if (b_GyroCalib == true)
+        if ((e_CurrState == E_STATE_Balancing)||(e_CurrState == E_STATE_Fall))
         {
-            Angle = imuVAL;
-            b_GyroCalib = false;
-        }
-        
-        //highpass filter (Manual :( !)
-        if (ABS(Xval)<1000)
-        { 
-            // filter values lower than 1000 wich are basically just noise
-            Xval = 0;
-        }
-        //else
-        //{
-        //    // because noise is still inside the values
-        //    Xval = Xval - CalibGyrovalue;
-        //}
-        AVGYaw = AVG(yaw);
-        //Angle = Alpha*((Xval-GyroDrift) * 0.00001 + Angle)+(1-Alpha)*trunc(yaw);
-        Angle = Alpha*((Xval-GyroDrift) * 0.00001 + Angle)+(1-Alpha)*AVGYaw;
-        //Angle = (Xval) * 0.00001 + Angle;
-        
-        ////begin TASK2//////////////////////////////////////////////////////////////////////////////////////////////////////
-        //
-        ////offset for the angle
-        CMD_Angle = Angle - stCurrentState.angleOffset - GyroDrift;
-        //Ref_ACCELAngle = yaw - stCurrentState.angleOffset;
-        
-        //setStepperAngleDir(CMD_Angle);
-        
-        if (b_Reeinitialise == false)
-        {
-            //magic!!
             calculatePID(&stCurrentState,CMD_Angle);
         }
         
@@ -247,7 +215,8 @@ void printSerial(void const * argument)
 #if (DEBUG_VAL == DEBUG_SPEED)
         debugPrint(CMD_Angle, stCurrentState.speed);
 #elif (DEBUG_VAL == DEBUG_ACCEL)
-        debugPrint(CMD_Angle, yaw);
+        //debugPrint(CMD_Angle, yaw);
+        debugPrint(CMD_Angle, stCurrentState.speed);
 #endif
         
         HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_14);
@@ -265,12 +234,13 @@ void StartDefaultTask(void const * argument)
 {
     
     defaultTaskID = osThreadGetId();
+    
     /* init code for USB_DEVICE */
     MX_USB_DEVICE_Init();
     enableLeftMDriver(Enable);
     enableRightMDriver(Enable);
     
-    setStepperMotorMode(Quarter_S);
+    setStepperMotorMode(Eigth_S);
     
     //initialize PID & State machine VAR
     initialiseParam(&stCurrentState);
@@ -345,6 +315,121 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
     {
         
     }
+}
+
+void TIM7_IRQHandler(void)
+{
+  static int i = 0,C=1;
+  static float xvalnoise = 0;
+  BSP_GYRO_GetXYZ(Buffer);
+  Xval = Buffer[0];
+  
+  //if calibrating 
+  if (E_STATE_Calibrating == e_CurrState)
+  {
+      AllLedSetState(GPIO_PIN_SET);
+      
+      sum+=Xval;
+      i++;
+      Asum = AVG(Xval);
+      Alpha = ALPHA_CALIB;
+      
+        if (i >=1500)
+        {
+            e_CurrState = E_STATE_POSTCalibVERIF;
+            //e_CurrState = E_STATE_Balancing;
+            i=0;
+            sum/=1500;
+            Angle = yaw;
+            AllLedSetState(GPIO_PIN_RESET);
+            
+            reeinitfilter = 1;
+            
+            //Alpha = ALPHA;
+            //sum = 0;
+        }
+  }
+
+  if (E_STATE_POSTCalibVERIF == e_CurrState)
+  {
+      static int j = 0;
+      static int stabilitycounter = 0;
+      static float referenceValue = 0;
+      j++;
+      //magic!!
+      AllLedSetState(GPIO_PIN_SET);
+      if (j==10)
+      {
+          j=0;
+          AOA = AVGOAVG(sum,reeinitfilter);
+          reeinitfilter = 0;
+          
+          if ((AOA<(referenceValue + ANGLE_VERIF_TSH))&&(AOA>(referenceValue - ANGLE_VERIF_TSH)))
+          {
+            stabilitycounter++;
+          }
+          else
+          {
+            stabilitycounter = 0;
+            referenceValue = AOA;
+          }
+      }
+      
+      //duplicated from next state---------------
+      sum = AVG(Xval);
+      if (ABS(Xval-Asum)<xvalnoise)
+      {
+        Xval = 0;
+      }
+      Xval1=Xval-Asum;
+      
+      sum1= Asum;
+      sum2=sum;
+      
+      Angle += Xval1*0.004;
+      //----------------------------------------
+      if (stabilitycounter>ANGLE_VERIF_MAX_SAMPL)
+      {
+        stabilitycounter = 0;
+        Asum = AOA;
+        e_CurrState = E_STATE_Fall;
+        AllLedSetState(GPIO_PIN_RESET);
+        
+      }
+
+  }
+  
+  else if (E_STATE_Balancing == e_CurrState)
+  {
+      sum = AVG(Xval);
+      
+      //if ((E_STATE_Balancing == e_CurrState)&&(stCurrentState.speed==0)&&(ABS(Asum)-ABS(sum)<0.7))
+      //{
+      //     Asum = Asum * 0.8 + sum*0.2;
+      //}
+      if (ABS(Xval-Asum)<xvalnoise)
+      {
+        Xval = 0;
+      }
+      //if (ABS(Xval)*1000<2500)
+      //{
+      //  Xval = 0;
+      //}
+      Xval1=Xval-Asum;//-(stCurrentState.angleOffset*0.1);
+      //sum1= Asum-(stCurrentState.angleOffset*0.1);
+      sum1= Asum;
+      sum2=sum;
+      //Asum-=0.1;
+      Angle += Xval1*0.004;
+      
+      //angle = angle * 0.9996 + yaw * 0.0004;
+  }
+
+  /* USER CODE END TIM7_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim7);
+  /* USER CODE BEGIN TIM7_IRQn 1 */
+
+  /* USER CODE END TIM7_IRQn 1 */
 }
 
 
