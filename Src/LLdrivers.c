@@ -267,12 +267,12 @@ void calculatePID(ST_CommParam *receivedCMD ,float sensorValue)
             {
                 if (PID_Output<0)
                 {
-                    balanceSetPoint=balanceSetPoint + 0.05 ;
+                    balanceSetPoint=balanceSetPoint + 0.02 ;
                     //balanceSetPoint++;
                 }
                 if (PID_Output>0)
                 {
-                    balanceSetPoint=balanceSetPoint - 0.05 ;
+                    balanceSetPoint=balanceSetPoint - 0.02 ;
                     //balanceSetPoint--;
                 }
             }
@@ -445,7 +445,7 @@ void stateManage(float arg_CMD_Angle, ST_CommParam *stArgCommParam)
                 e_CurrSubState = E_SSTATE_EQ;
                 
                 //b_Reeinitialise = false; // start the balancing process only when put at equilibrium point
-                stArgCommParam->speed=0; //overriding the pid value
+                //stArgCommParam->speed=0; //overriding the pid value
                 //Alpha = ALPHA; WTF ????
                 HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,GPIO_PIN_SET);
                 //driftCounter++;
@@ -534,8 +534,8 @@ extern float Xval,Xval1,Angle,sum1,sum2,AOA;
             //printf("G%06.2f;%06.2f;\n\r",arg_CMD_Angle,arg_CMD_Angle-ANGLE_OFFSET,speed); //leading zeros for the sign serial print the output is on 8
             //printf("%06.2f;%06.2f;%06.2f;\n\r",arg_CMD_Angle,speed,yaw/*,strDebug*/);
             //printf("%06.2f;%06.2f;%06.2f;;%06.2f\n\r",Xval,sum1,Angle,yaw);
-            printf("%06.2f;%06.2f;%06.2f;%06.2f;%06.2f;\n\r",sum2*1000,sum1*1000,AOA*1000,Angle,yaw);
-            //printf("%06.2f;%06.2f;0.0;0.0;\n\r",arg_CMD_Angle,speed);
+            //printf("%06.2f;%06.2f;%06.2f;%06.2f;%06.2f;\n\r",sum2*1000,sum1*1000,AOA*1000,Angle,yaw);//to debug the gyro offset
+            printf("%06.2f;%06.2f;0.0;0.0;0.0;\n\r",arg_CMD_Angle,ABS(speed));
 #endif      
         }   
 }

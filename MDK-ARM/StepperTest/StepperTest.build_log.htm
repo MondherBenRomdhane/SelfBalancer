@@ -27,22 +27,18 @@ Project File Date:  05/10/2020
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 6 (build 750)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'StepperTest'
-compiling LLdrivers.c...
-..\Src\LLdrivers.c(270): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-                      balanceSetPoint=balanceSetPoint + 0.005 ;
-..\Src\LLdrivers.c(275): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-                      balanceSetPoint=balanceSetPoint - 0.005 ;
-..\Src\LLdrivers.c(443): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-              if (arg_CMD_Angle < BALANCE_RANGE )
-..\Src\LLdrivers.c(464): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-              if(arg_CMD_Angle < BALANCE_RANGE)
-..\Src\LLdrivers.c(433): warning:  #177-D: variable "driftCounter"  was declared but never referenced
-      static unsigned int driftCounter = 0;
-..\Src\LLdrivers.c: 5 warnings, 0 errors
+compiling InitMain.c...
+..\Src\Initializers\InitMain.c(389): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+        Angle += Xval1*0.004;
+..\Src\Initializers\InitMain.c(423): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+        Angle += Xval1*0.004;
+..\Src\Initializers\InitMain.c(322): warning:  #177-D: variable "C"  was declared but never referenced
+    static int i = 0,C=1;
+..\Src\Initializers\InitMain.c: 3 warnings, 0 errors
 linking...
-Program Size: Code=47768 RO-data=968 RW-data=892 ZI-data=14900  
+Program Size: Code=47660 RO-data=964 RW-data=892 ZI-data=14900  
 FromELF: creating hex file...
-"StepperTest\StepperTest.axf" - 0 Error(s), 5 Warning(s).
+"StepperTest\StepperTest.axf" - 0 Error(s), 3 Warning(s).
 
 <h2>Software Packages used:</h2>
 

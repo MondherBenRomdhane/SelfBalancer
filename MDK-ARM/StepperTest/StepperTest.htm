@@ -3,7 +3,7 @@
 <title>Static Call Graph - [StepperTest\StepperTest.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image StepperTest\StepperTest.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Wed May 13 20:47:12 2020
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Sun May 24 12:55:48 2020
 <BR><P>
 <H3>Maximum Stack Usage =        344 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -2611,8 +2611,8 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[7e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;AngleCalcTask
 </UL>
 
-<P><STRONG><a name="[1a1]"></a>debugPrint</STRONG> (Thumb, 166 bytes, Stack size 88 bytes, lldrivers.o(i.debugPrint))
-<BR><BR>[Stack]<UL><LI>Max Depth = 112<LI>Call Chain = debugPrint &rArr; __2printf
+<P><STRONG><a name="[1a1]"></a>debugPrint</STRONG> (Thumb, 92 bytes, Stack size 40 bytes, lldrivers.o(i.debugPrint))
+<BR><BR>[Stack]<UL><LI>Max Depth = 64<LI>Call Chain = debugPrint &rArr; __2printf
 </UL>
 <BR>[Calls]<UL><LI><a href="#[136]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_f2d
 <LI><a href="#[12e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
@@ -2757,7 +2757,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[7f]"></a>printSerial</STRONG> (Thumb, 68 bytes, Stack size 0 bytes, initmain.o(i.printSerial))
-<BR><BR>[Stack]<UL><LI>Max Depth = 112<LI>Call Chain = printSerial &rArr; debugPrint &rArr; __2printf
+<BR><BR>[Stack]<UL><LI>Max Depth = 72<LI>Call Chain = printSerial &rArr; osDelay &rArr; vTaskDelay &rArr; xTaskResumeAll &rArr; xTaskIncrementTick
 </UL>
 <BR>[Calls]<UL><LI><a href="#[158]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osThreadGetId
 <LI><a href="#[ab]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osDelay
@@ -2844,7 +2844,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[7d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;StartDefaultTask
 </UL>
 
-<P><STRONG><a name="[af]"></a>stateManage</STRONG> (Thumb, 204 bytes, Stack size 24 bytes, lldrivers.o(i.stateManage))
+<P><STRONG><a name="[af]"></a>stateManage</STRONG> (Thumb, 202 bytes, Stack size 24 bytes, lldrivers.o(i.stateManage))
 <BR><BR>[Stack]<UL><LI>Max Depth = 96<LI>Call Chain = stateManage &rArr; _Error_Handler &rArr; osDelay &rArr; vTaskDelay &rArr; xTaskResumeAll &rArr; xTaskIncrementTick
 </UL>
 <BR>[Calls]<UL><LI><a href="#[1c8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_cdcmple

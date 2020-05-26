@@ -15,8 +15,8 @@
 #define ANGLE_VERIF_TSH           10
 #define ANGLE_VERIF_MAX_SAMPL     500
 
-#define OMEGA_MAX   3
-#define STEPPER_MODE 2
+#define OMEGA_MAX   1
+#define STEPPER_MODE 4
 //#define LINEARISE(X)  100/(200 * 0.00002)
 #define ARR(X)  100/(200 *STEPPER_MODE* 0.00002 * OMEGA_MAX * X)
 
@@ -56,7 +56,7 @@
 
 #define GYROSCOPE_DRIFT         0.02
 
-#define KP_M                    (60)
+#define KP_M                    (120)
 #define KI_M                    (0)
 #define KD_M                    (0)
 
